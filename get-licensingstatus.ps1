@@ -13,7 +13,6 @@ enum LicenseStatus {
 
 $instanceMetadata = Invoke-RestMethod -Headers @{"Metadata"="true"} -URI http://169.254.169.254/metadata/instance?api-version=2019-03-11 -Method get
 
-"Querying instance metadata"
 if ([string]::IsNullOrEmpty($instanceMetadata.compute.publisher))
 {
     $createdFromMarketplaceImage = $false
@@ -34,7 +33,6 @@ if ($azureKmsIpAddressResolvedFromDNS)
 }
 $azureKmsPortPingSucceeded = test-netconnection -ComputerName $azureKmsIpAddress -Port 1688 -InformationLevel Quiet
 
-"Querying SoftwareLicensingProduct`n"
 $filter = "ApplicationID = '55c92734-d682-4d71-983e-d6ec3f16059f' AND PartialProductKey IS NOT NULL"
 $softwareLicensingProduct = Get-CimInstance -ClassName SoftwareLicensingProduct -Filter $filter
 #@{Label="Grace period (days)"; Expression={$_.graceperiodremaining/1440}}
@@ -79,7 +77,6 @@ $status = [PSCustomObject][Ordered]@{
 
 $status
 
-"`nGetting activation events`n"
 $events = Get-WinEvent -FilterHashtable @{LogName = 'Application'; ProviderName = 'Microsoft-Windows-Security-SPP'; Id = 12288,12289} -ErrorAction SilentlyContinue
 if (($events | measure).Count -gt 0)
 {
