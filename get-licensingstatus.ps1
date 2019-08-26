@@ -36,14 +36,14 @@ $softwareLicensingProduct = Get-CimInstance -ClassName SoftwareLicensingProduct 
 #@{Label="Grace period (days)"; Expression={$_.graceperiodremaining/1440}}
 
 $status = [PSCustomObject][Ordered]@{
-    ResourceId = $instanceMetadata.resourceId
-    SubscriptionId = $instanceMetadata.subscriptionId
-    ResourceGroupName = $instanceMetadata.resourceGroupName
-    VMName = $instanceMetadata.name
+    ResourceId = $instanceMetadata.compute.resourceId
+    SubscriptionId = $instanceMetadata.compute.subscriptionId
+    ResourceGroupName = $instanceMetadata.compute.resourceGroupName
+    VMName = $instanceMetadata.compute.name
     ComputerName = $env:COMPUTERNAME
-    VMID = $instanceMetadata.vmId
+    VMID = $instanceMetadata.compute.vmId
     AzureKmsIpAddress = $azureKmsIpAddress
-    AzureKmsIpAddressResolvedFromDNS = $azureKmsIpAddressResolvedFromDNS
+    AzureKmsIpAddressResolvedFromDNS = $azureKmsIpAddressResolvedFromDNS.IPAddress
     AzureKmsPortPingSucceeded = $azureKmsPortPingSucceeded
     PublicIpAddress = $instanceMetadata.network.interface.ipv4.ipAddress.publicIpAddress
     PublicIpAddressFromIpInfo = $publicIpAddressFromIpInfo
@@ -101,4 +101,25 @@ else
      GUID = ($_.Properties)[9].Value
     }
    }
+
+Querying SoftwareLicensingProduct
+
+Get-CimInstance : The security processor reported that the trusted data store was rearmed.
+At C:\get-licensingstatus.ps1:34 char:29
++ ... ngProduct = Get-CimInstance -ClassName SoftwareLicensingProduct -Filt ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:) [Get-CimInstance], CimException
+    + FullyQualifiedErrorId : HRESULT 0xc004d302,Microsoft.Management.Infrastructure.CimCmdlets.GetCimInstanceCommand
+
+Cannot convert null to type "LicenseStatus" due to enumeration values that are not valid. Specify one of the following enumeration values and try again. The possible enumeration values are
+"Unlicensed,Licensed,OOBGrace,OOTGrace,NonGenuineGrace,Notification,ExtendedGrace".
+At C:\get-licensingstatus.ps1:37 char:1
++ $status = [PSCustomObject][Ordered]@{
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidArgument: (:) [], RuntimeException
+    + FullyQualifiedErrorId : nullToEnumInvalidCast
+
+LicenseStatus                                  : Notification
+LicenseStatusReason                            : 3221549142
+
 #>
