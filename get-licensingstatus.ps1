@@ -11,6 +11,13 @@ enum LicenseStatus {
     ExtendedGrace = 6
 }
 
+$win32_ComputerSystem = get-ciminstance -ClassName Win32_ComputerSystem
+$win32_OperatingSystem = get-ciminstance -ClassName Win32_OperatingSystem
+if ($win32_OperatingSystem)
+{
+    $osVersion = "$($win32_OperatingSystem.Caption) $($win32_OperatingSystem.Version)"
+}
+
 $instanceMetadata = Invoke-RestMethod -Headers @{"Metadata"="true"} -URI http://169.254.169.254/metadata/instance?api-version=2019-03-11 -Method get
 
 if ([string]::IsNullOrEmpty($instanceMetadata.compute.publisher))
@@ -43,6 +50,13 @@ $status = [PSCustomObject][Ordered]@{
     ResourceGroupName = $instanceMetadata.compute.resourceGroupName
     VMName = $instanceMetadata.compute.name
     ComputerName = $env:COMPUTERNAME
+    OsVersion = $osVersion
+    InstallDateUtc = get-date $win32_OperatingSystem.InstallDate.ToUniversalTime() -f yyyy-MM-ddTHH:mm:ssZ
+    LastBootUpTimeUtc = get-date $win32_OperatingSystem.LastBootUpTime.ToUniversalTime() -f yyyy-MM-ddTHH:mm:ssZ
+    LocalDateTimeUtc = get-date $win32_OperatingSystem.LocalDateTime.ToUniversalTime() -f yyyy-MM-ddTHH:mm:ss
+    PartOfDomain = $win32_ComputerSystem.PartOfDomain
+    Domain = $win32_ComputerSystem.Domain
+    DomainRole = $win32_ComputerSystem.DomainRole
     VMID = $instanceMetadata.compute.vmId
     AzureKmsIpAddress = $azureKmsIpAddress
     AzureKmsIpAddressResolvedFromDNS = $azureKmsIpAddressResolvedFromDNS
