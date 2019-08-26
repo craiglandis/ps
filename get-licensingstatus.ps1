@@ -1,4 +1,5 @@
-#(new-object System.Net.WebClient).DownloadFile('https://raw.githubusercontent.com/craiglandis/ps/master/get-licensingstatus.ps1',"$pwd\get-licensingstatus.ps1")
+# One-liner to download and run:
+# (new-object System.Net.WebClient).DownloadFile('https://raw.githubusercontent.com/craiglandis/ps/master/get-licensingstatus.ps1',"$pwd\get-licensingstatus.ps1");.\get-licensingstatus.ps1
 
 enum LicenseStatus {
     Unlicensed = 0
