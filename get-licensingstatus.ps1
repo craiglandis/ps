@@ -14,14 +14,14 @@ enum LicenseStatus {
 $instanceMetadata = Invoke-RestMethod -Headers @{"Metadata"="true"} -URI http://169.254.169.254/metadata/instance?api-version=2019-03-11 -Method get
 
 "Querying instance metadata"
-if ([string]::IsNullOrEmpty($instanceMetadata.publisher))
+if ([string]::IsNullOrEmpty($instanceMetadata.compute.publisher))
 {
     $createdFromMarketplaceImage = $false
 }
 else
 {
     $createdFromMarketplaceImage = $true
-    $marketplaceImage = "$($instanceMetadata.publisher).$($instanceMetadata.offer).$($instanceMetadata.sku).$($instanceMetadata.version)"
+    $marketplaceImage = "$($instanceMetadata.compute.publisher).$($instanceMetadata.compute.offer).$($instanceMetadata.compute.sku).$($instanceMetadata.compute.version)"
 }
 
 $publicIpAddressFromIpInfo = (invoke-restmethod http://ipinfo.io/json).ip
@@ -55,12 +55,12 @@ $status = [PSCustomObject][Ordered]@{
     #$instanceMetadata.network.interface.ipv6.ipAddress.publicIpAddress
     #$instanceMetadata.network.interface.ipv6.ipAddress.privateIpAddress
     MACAddress = $instanceMetadata.network.interface.macAddress
-    VMSize = $instanceMetadata.vmSize
+    VMSize = $instanceMetadata.compute.vmSize
     CreatedFromMarketplaceImage = $createdFromMarketplaceImage
     MarketplaceImage = $marketplaceImage
-    VMScaleSetName = $instanceMetadata.vmScaleSetName
-    Location = $instanceMetadata.location
-    Environment = $instanceMetadata.azEnvironment
+    VMScaleSetName = $instanceMetadata.compute.vmScaleSetName
+    Location = $instanceMetadata.compute.location
+    Environment = $instanceMetadata.compute.azEnvironment
     LicenseStatus = [LicenseStatus]$softwareLicensingProduct.LicenseStatus
     LicenseStatusReason = $softwareLicensingProduct.LicenseStatusReason
     GracePeriodRemaining = $softwareLicensingProduct.GracePeriodRemaining
