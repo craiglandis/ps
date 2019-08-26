@@ -78,10 +78,10 @@ $status = [PSCustomObject][Ordered]@{
 $status
 
 $events = Get-WinEvent -FilterHashtable @{LogName = 'Application'; ProviderName = 'Microsoft-Windows-Security-SPP'; Id = 12288,12289} -ErrorAction SilentlyContinue
-if (($events | measure).Count -gt 0)
+if (($events | measure-object).Count -gt 0)
 {
     "Showing the 5 most recent activation events`n"
-    $events | sort RecordId -Descending | format-list @{Label = 'SystemTime'; Expression = {([xml]$_.ToXML()).Event.System.TimeCreated.SystemTime}}, LogName, ProviderName, Id, Message
+    $events | Sort-Object RecordId -Descending | format-list @{Label = 'SystemTime'; Expression = {([xml]$_.ToXML()).Event.System.TimeCreated.SystemTime}}, LogName, ProviderName, Id, Message
 }
 else
 {
