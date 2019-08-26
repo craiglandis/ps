@@ -76,7 +76,6 @@ $status
 
 "`nGetting activation events`n"
 $events = Get-WinEvent -FilterHashtable @{LogName = 'Application'; ProviderName = 'Microsoft-Windows-Security-SPP'; Id = 12288,12289} -ErrorAction SilentlyContinue
-$events | format-list @{Label = 'SystemTime'; Expression = {([xml]$_.ToXML()).Event.System.TimeCreated.SystemTime}}, Id, Message
 if (($events | measure).Count -gt 0)
 {
     "Showing the 5 most recent activation events`n"
