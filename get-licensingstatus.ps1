@@ -28,6 +28,10 @@ $publicIpAddressFromIpInfo = (invoke-restmethod http://ipinfo.io/json).ip
 $azureKmsFullyQualifiedName = 'kms.core.windows.net'
 $azureKmsIpAddress = '23.102.135.246'
 $azureKmsIpAddressResolvedFromDNS = resolve-dnsname -Name $azureKmsFullyQualifiedName
+if ($azureKmsIpAddressResolvedFromDNS)
+{
+    $azureKmsIpAddressResolvedFromDNS = $azureKmsIpAddressResolvedFromDNS.IPAddress
+}
 $azureKmsPortPingSucceeded = test-netconnection -ComputerName $azureKmsIpAddress -Port 1688 -InformationLevel Quiet
 
 "Querying SoftwareLicensingProduct`n"
@@ -43,7 +47,7 @@ $status = [PSCustomObject][Ordered]@{
     ComputerName = $env:COMPUTERNAME
     VMID = $instanceMetadata.compute.vmId
     AzureKmsIpAddress = $azureKmsIpAddress
-    AzureKmsIpAddressResolvedFromDNS = $azureKmsIpAddressResolvedFromDNS.IPAddress
+    AzureKmsIpAddressResolvedFromDNS = $azureKmsIpAddressResolvedFromDNS
     AzureKmsPortPingSucceeded = $azureKmsPortPingSucceeded
     PublicIpAddress = $instanceMetadata.network.interface.ipv4.ipAddress.publicIpAddress
     PublicIpAddressFromIpInfo = $publicIpAddressFromIpInfo
