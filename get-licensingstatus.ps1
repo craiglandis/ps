@@ -18,7 +18,7 @@ if ($win32_OperatingSystem)
     $osVersion = "$($win32_OperatingSystem.Caption) $($win32_OperatingSystem.Version)"
 }
 
-$instanceMetadata = Invoke-RestMethod -Headers @{"Metadata"="true"} -URI http://169.254.169.254/metadata/instance?api-version=2019-03-11 -Method get
+$instanceMetadata = Invoke-RestMethod -Headers @{'Metadata' = 'true'} -Method 'GET' -Uri 'http://169.254.169.254/metadata/instance?api-version=2019-06-01'
 
 if ([string]::IsNullOrEmpty($instanceMetadata.compute.publisher))
 {
@@ -27,10 +27,10 @@ if ([string]::IsNullOrEmpty($instanceMetadata.compute.publisher))
 else
 {
     $createdFromMarketplaceImage = $true
-    $marketplaceImage = "$($instanceMetadata.compute.publisher).$($instanceMetadata.compute.offer).$($instanceMetadata.compute.sku).$($instanceMetadata.compute.version)"
+    $marketplaceImage = "$($instanceMetadata.compute.publisher)|$($instanceMetadata.compute.offer)|$($instanceMetadata.compute.sku)|$($instanceMetadata.compute.version)"
 }
 
-$publicIpAddressFromIpInfo = (invoke-restmethod http://ipinfo.io/json).ip
+$publicIpAddressFromIpInfo = (Invoke-RestMethod -Uri http://checkip.amazonaws.com/).Trim()
 $azureKmsFullyQualifiedName = 'kms.core.windows.net'
 $azureKmsIpAddress = '23.102.135.246'
 $azureKmsIpAddressResolvedFromDNS = resolve-dnsname -Name $azureKmsFullyQualifiedName
