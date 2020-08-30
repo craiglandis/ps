@@ -40,8 +40,15 @@ cinst greenshot -y
 cinst powershell -y # WMF+PS5.1
 cinst putty.install -y
 cinst dotnetfx -y # .NET Framework 4.8
-https://github.com/microsoft/winget-cli/releases/download/v0.1.4331-preview/Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.appxbundle
-Add-AppxPackage -Path Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.appxbundle
+
+$exeUri = 'https://download.microsoft.com/download/B/E/1/BE1F235A-836D-42AC-9BC1-8F04C9DA7E9D/vc_uwpdesktop.140.exe'
+$exeName = $exeUri.Split('/')[-1]
+Invoke-WebRequest -Uri $exeUri -OutFile $exeName
+Start-Process -FilePath $exeName -ArgumentList '/install /quiet /norestart' -Wait
+$packageUri = 'https://github.com/microsoft/winget-cli/releases/download/v0.1.42241-preview/Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.appxbundle'
+$packageName = $packageUri.Split('/')[-1]
+Invoke-WebRequest -Uri $packageUri -OutFile $packageName
+Add-AppxPackage -Path $packageName
 
 choco install chocolatey-core.extension
 #>
