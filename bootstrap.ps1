@@ -1,4 +1,15 @@
-Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))
+$uri = "http://live.sysinternals.com/Files/SysinternalsSuite.zip"
+$myPath = "$env:SystemDrive\my"
+$outFile = "$myPath\SysinternalsSuite.zip"
+if (!(test-path $myPath)) {new-item -Path $myPath -ItemType Directory -Force}
+Invoke-WebRequest -UseBasicParsing -Uri $uri -OutFile $outFile -Verbose
+Expand-Archive -LiteralPath $outFile -DestinationPath $myDir -Force
+
+exit
+
+Set-ExecutionPolicy Bypass -Scope Process -Force
+[System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
+iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))
 
 reg add "HKCU\SOFTWARE\Microsoft\ServerManager" /v DoNotOpenServerManagerAtLogon /t REG_DWORD /d 1 /f
 
@@ -6,7 +17,8 @@ cinst 7zip.install -y
 cinst notepadplusplus.install -y
 #cinst microsoft-edge -y
 #cinst googlechrome -y
-cinst sysinternals -y
+#Chocolatey install of sysinternals is slow, will download zip instead
+#cinst sysinternals -y
 cinst windirstat -y
 cinst microsoft-windows-terminal -y
 cinst autohotkey -y
