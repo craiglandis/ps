@@ -1,12 +1,3 @@
-$uri = "http://live.sysinternals.com/Files/SysinternalsSuite.zip"
-$myPath = "$env:SystemDrive\my"
-$outFile = "$myPath\SysinternalsSuite.zip"
-if (!(test-path $myPath)) {new-item -Path $myPath -ItemType Directory -Force}
-Invoke-WebRequest -UseBasicParsing -Uri $uri -OutFile $outFile -Verbose
-Expand-Archive -LiteralPath $outFile -DestinationPath $myDir -Force
-
-exit
-
 Set-ExecutionPolicy Bypass -Scope Process -Force
 [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
 iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))
@@ -24,6 +15,14 @@ cinst microsoft-windows-terminal -y
 cinst autohotkey -y
 cinst powershell-core -y
 cinst azcopy10 -y
+
+$uri = "http://live.sysinternals.com/Files/SysinternalsSuite.zip"
+$myPath = "$env:SystemDrive\my"
+$outFile = "$myPath\SysinternalsSuite.zip"
+if (!(test-path $myPath)) {new-item -Path $myPath -ItemType Directory -Force}
+Invoke-WebRequest -UseBasicParsing -Uri $uri -OutFile $outFile -Verbose
+Expand-Archive -LiteralPath $outFile -DestinationPath $myPath -Force
+
 <#
 cinst crystaldiskmark -y
 cinst nircmd -y
