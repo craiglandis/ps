@@ -4,7 +4,8 @@ reg add "HKCU\SOFTWARE\Microsoft\ServerManager" /v DoNotOpenServerManagerAtLogon
 
 cinst 7zip.install -y
 cinst notepadplusplus.install -y
-cinst googlechrome -y
+#cinst microsoft-edge -y
+#cinst googlechrome -y
 cinst sysinternals -y
 cinst windirstat -y
 cinst microsoft-windows-terminal -y
