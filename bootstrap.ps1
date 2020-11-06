@@ -6,16 +6,13 @@ reg add "HKCU\SOFTWARE\Microsoft\ServerManager" /v DoNotOpenServerManagerAtLogon
 
 choco install 7zip.install -y
 choco install notepadplusplus.install -y
-#choco install microsoft-edge -y
-#choco install googlechrome -y
-#Chocolatey install of sysinternals is slow, will download zip instead
-#choco install sysinternals -y
-#cuninst sysinternals -y
+choco install microsoft-edge -y
 choco install windirstat -y
 choco install microsoft-windows-terminal -y
 choco install autohotkey -y
 choco install powershell-core -y
 choco install azcopy10 -y
+choco install vscode -y
 
 $uri = "http://live.sysinternals.com/Files/SysinternalsSuite.zip"
 $myPath = "$env:SystemDrive\my"
@@ -37,7 +34,6 @@ choco install nmap -y
 choco install tightvnc -y
 choco install cpu-z.install -y
 choco install dotnetcore-runtime -y
-choco install microsoft-edge -y
 choco install postman -y
 choco install fiddler -y
 choco install wireshark -y
@@ -53,6 +49,10 @@ choco install greenshot -y
 choco install powershell -y # WMF+PS5.1
 choco install putty.install -y
 choco install dotnetfx -y # .NET Framework 4.8
+choco install googlechrome -y
+#Chocolatey install of sysinternals is slow, will download zip instead
+choco install sysinternals -y
+cuninst sysinternals -y
 
 $exeUri = 'https://download.microsoft.com/download/B/E/1/BE1F235A-836D-42AC-9BC1-8F04C9DA7E9D/vc_uwpdesktop.140.exe'
 $exeName = $exeUri.Split('/')[-1]
