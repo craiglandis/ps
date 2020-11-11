@@ -21,6 +21,8 @@ if (!(test-path $myPath)) {new-item -Path $myPath -ItemType Directory -Force}
 Invoke-WebRequest -UseBasicParsing -Uri $uri -OutFile $outFile -Verbose
 Expand-Archive -LiteralPath $outFile -DestinationPath $myPath -Force
 
+Update-Help -Force
+
 <#
 choco install crystaldiskmark -y
 choco install nircmd -y
