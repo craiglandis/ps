@@ -62,6 +62,7 @@ $exeUri = 'https://download.microsoft.com/download/B/E/1/BE1F235A-836D-42AC-9BC1
 $exeName = $exeUri.Split('/')[-1]
 Invoke-WebRequest -Uri $exeUri -OutFile $exeName
 Start-Process -FilePath $exeName -ArgumentList '/install /quiet /norestart' -Wait
+#https://github.com/microsoft/terminal/releases/download/v1.5.3142.0/Microsoft.WindowsTerminalPreview_1.5.3142.0_8wekyb3d8bbwe.msixbundle
 $packageUri = 'https://github.com/microsoft/winget-cli/releases/download/v0.1.42241-preview/Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.appxbundle'
 $packageName = $packageUri.Split('/')[-1]
 Invoke-WebRequest -Uri $packageUri -OutFile $packageName
