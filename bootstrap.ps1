@@ -3,6 +3,7 @@ Set-ExecutionPolicy Bypass -Scope Process -Force
 iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))
 
 reg add "HKCU\SOFTWARE\Microsoft\ServerManager" /v DoNotOpenServerManagerAtLogon /t REG_DWORD /d 1 /f
+reg add "HKCU\SOFTWARE\Microsoft\ServerManager" /v DoNotPopWACConsoleAtSMLaunch /t REG_DWORD /d 1 /f
 
 choco install 7zip.install -y
 choco install notepadplusplus.install -y
@@ -14,6 +15,7 @@ choco install powershell-core -y
 choco install azcopy10 -y
 choco install vscode -y
 
+#Chocolatey install of sysinternals is slow, download/extract zip is faster
 $uri = "http://live.sysinternals.com/Files/SysinternalsSuite.zip"
 $myPath = "$env:SystemDrive\my"
 $outFile = "$myPath\SysinternalsSuite.zip"
