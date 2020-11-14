@@ -23,7 +23,7 @@ if (!(test-path $myPath)) {new-item -Path $myPath -ItemType Directory -Force}
 Invoke-WebRequest -UseBasicParsing -Uri $uri -OutFile $outFile -Verbose
 Expand-Archive -LiteralPath $outFile -DestinationPath $myPath -Force
 
-Update-Help -Force
+Update-Help -Force -ErrorAction SilentlyContinue
 
 <#
 choco install crystaldiskmark -y
