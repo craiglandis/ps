@@ -1,5 +1,26 @@
+param(
+    [switch]$all,
+    [switch]$sysinternals
+)
+
 Set-ExecutionPolicy Bypass -Scope Process -Force
 [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
+
+if ($sysinternals -or $all)
+{
+    #Chocolatey install of sysinternals is slow, download/extract zip is faster
+    $uri = "http://live.sysinternals.com/Files/SysinternalsSuite.zip"
+    $myPath = "$env:SystemDrive\tools"
+    $outFile = "$myPath\SysinternalsSuite.zip"
+    if (!(test-path $myPath)) {new-item -Path $myPath -ItemType Directory -Force}
+    Invoke-WebRequest -UseBasicParsing -Uri $uri -OutFile $outFile -Verbose
+    Expand-Archive -LiteralPath $outFile -DestinationPath $myPath -Force
+    if ($sysinternals -and !$all)
+    {
+        exit
+    }
+}
+
 iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))
 
 reg add "HKCU\SOFTWARE\Microsoft\ServerManager" /v DoNotOpenServerManagerAtLogon /t REG_DWORD /d 1 /f
@@ -14,14 +35,6 @@ choco install autohotkey -y
 choco install powershell-core -y
 choco install azcopy10 -y
 choco install vscode -y
-
-#Chocolatey install of sysinternals is slow, download/extract zip is faster
-$uri = "http://live.sysinternals.com/Files/SysinternalsSuite.zip"
-$myPath = "$env:SystemDrive\my"
-$outFile = "$myPath\SysinternalsSuite.zip"
-if (!(test-path $myPath)) {new-item -Path $myPath -ItemType Directory -Force}
-Invoke-WebRequest -UseBasicParsing -Uri $uri -OutFile $outFile -Verbose
-Expand-Archive -LiteralPath $outFile -DestinationPath $myPath -Force
 
 Update-Help -Force -ErrorAction SilentlyContinue
 
