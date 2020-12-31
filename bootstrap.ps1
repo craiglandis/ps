@@ -34,46 +34,61 @@ reg add "HKCU\SOFTWARE\Microsoft\ServerManager" /v DoNotOpenServerManagerAtLogon
 reg add "HKCU\SOFTWARE\Microsoft\ServerManager" /v DoNotPopWACConsoleAtSMLaunch /t REG_DWORD /d 1 /f
 
 choco install 7zip.install -y
-choco install notepadplusplus.install -y
-choco install microsoft-edge -y
-choco install windirstat -y
-choco install microsoft-windows-terminal -y
-choco install autohotkey -y
-choco install powershell-core -y
+choco install autohotkey.portable -y
+choco install az.powershell -y
 choco install azcopy10 -y
-choco install vscode -y
+choco install azure-cli -y
+choco install beyondcompare -y
+choco install cpu-z.install -y
+choco install crystaldiskmark -y
+choco install everything -y
+choco install fiddler -y
+choco install gpu-z -y
+choco install greenshot -y
+choco install microsoft-edge -y
+choco install microsoft-windows-terminal -y
+choco install microsoftazurestorageexplorer -y
+choco install notepadplusplus.install -y
+choco install powershell-core -y
+choco install putty.portable -y
+choco install screentogif -y
+choco install vscode.install -y
+choco install winscp.portable -y
+choco install wireshark -y
+choco install wiztree -y
 
 Update-Help -Force -ErrorAction SilentlyContinue
 
 <#
-choco install crystaldiskmark -y
-choco install nircmd -y
-choco install iperf3 -y
-choco install windbg -y
-choco install gpu-z -y
-choco install screentogif -y
-choco install speccy -y
-choco install beyondcompare -y
-choco install nmap -y
-choco install tightvnc -y
-choco install cpu-z.install -y
+# https://docs.chocolatey.org/en-us/faqs#what-is-the-difference-between-packages-no-suffix-as-compared-to.install.portable
+choco install autohotkey.portable -y
+choco install autohotkey -y
 choco install dotnetcore-runtime -y
-choco install postman -y
-choco install fiddler -y
-choco install wireshark -y
-choco install winscp.install -y
-choco install treesizefree -y
-choco install az.powershell -y
-choco install azure-cli -y
-choco install git.install -y
-choco install microsoftazurestorageexplorer -y
-choco install vscode -y
-choco install python -y
-choco install greenshot -y
-choco install powershell -y # WMF+PS5.1
-choco install putty.install -y
 choco install dotnetfx -y # .NET Framework 4.8
+choco install etcher -y
+choco install rufus.portable -y
+choco install git.install -y
 choco install googlechrome -y
+choco install graphviz -y
+choco install imagemagick.app -y
+choco install iperf3 -y
+choco install lessmsi -y
+choco install microsoft-windows-terminal -y
+choco install nircmd -y
+choco install nmap -y
+choco install postman -y
+choco install powerbi -y
+choco install powershell -y # WMF+PS5.1
+choco install powertoys -y
+choco install pswindowsupdate -y
+choco install python3 -y
+choco install speccy -y
+choco install tightvnc -y
+choco install treesizefree -y
+choco install vscode -y
+choco install windbg -y
+choco install windirstat -y
+
 #Chocolatey install of sysinternals is slow, will download zip instead
 choco install sysinternals -y
 cuninst sysinternals -y
