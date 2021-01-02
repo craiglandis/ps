@@ -15,12 +15,15 @@ Set-ExecutionPolicy Bypass -Scope Process -Force
 
 New-Item -Path $PROFILE.AllUsersAllHosts -Type File -Force
 
+#Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Console\TrueTypeFont' -Name '000' -Value 'CaskaydiaCove Nerd Font'
+Register-PSRepository -Name PSGallery –SourceLocation 'https://www.powershellgallery.com/api/v2' -InstallationPolicy Trusted
 Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
 
 $PSDefaultParameterValues.Add('Install-Module:Scope', 'AllUsers')
 $PSDefaultParameterValues.Add('Install-Module:AllowClobber', $true)
 $PSDefaultParameterValues.Add('Install-Module:Force', $true)
 
+Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force
 Install-Module -Name Az
 Install-Module -Name Az.Tools.Predictor
 Install-Module -Name ImportExcel
@@ -36,6 +39,15 @@ Install-Module -Name posh-git
 Install-Module -Name PoshRSJob
 Install-Module -Name posh-gist
 Install-Module -Name Terminal-Icons
+
+$url = 'https://github.com/ryanoasis/nerd-fonts/releases/download/v2.1.0/CascadiaCode.zip'
+$filePath = "$env:temp\CascadiaCode.zip"
+$folderPath = "$env:temp\CascadiaCode"
+(New-Object System.Net.WebClient).DownloadFile($url, $filePath)
+Expand-Archive -Path $filePath -DestinationPath $folderPath
+$fontsFolder = (New-Object -ComObject Shell.Application).Namespace(0x14)
+get-childitem $folderPath | foreach{$fontsFolder.CopyHere($_.FullName, 16)}
+# C:\Users\<username>\AppData\Local\Microsoft\Windows\Fonts
 
 if ($sysinternals -or $all)
 {
