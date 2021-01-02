@@ -13,6 +13,30 @@ if ($PSBoundParameters.Count -eq 0)
 Set-ExecutionPolicy Bypass -Scope Process -Force
 [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
 
+New-Item -Path $PROFILE.AllUsersAllHosts -Type File -Force
+
+Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
+
+$PSDefaultParameterValues.Add('Install-Module:Scope', 'AllUsers')
+$PSDefaultParameterValues.Add('Install-Module:AllowClobber', $true)
+$PSDefaultParameterValues.Add('Install-Module:Force', $true)
+
+Install-Module -Name Az
+Install-Module -Name Az.Tools.Predictor
+Install-Module -Name ImportExcel
+Install-Module -Name PSScriptAnalyzer
+Install-Module -Name Pester
+Install-Module -Name PSReadLine -AllowPrerelease
+Install-Module -Name oh-my-posh -AllowPrerelease
+Install-Module -Name PowerShellGet
+Install-Module -Name PSWindowsUpdate
+Install-Module -Name PackageManagement
+Install-Module -Name SHiPS
+Install-Module -Name posh-git
+Install-Module -Name PoshRSJob
+Install-Module -Name posh-gist
+Install-Module -Name Terminal-Icons
+
 if ($sysinternals -or $all)
 {
     #Chocolatey install of sysinternals is slow, download/extract zip is faster
