@@ -16,14 +16,14 @@ Set-ExecutionPolicy Bypass -Scope Process -Force
 New-Item -Path $PROFILE.AllUsersAllHosts -Type File -Force
 
 #Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Console\TrueTypeFont' -Name '000' -Value 'CaskaydiaCove Nerd Font'
-Register-PSRepository -Name PSGallery –SourceLocation 'https://www.powershellgallery.com/api/v2' -InstallationPolicy Trusted
+#Register-PSRepository -Name PSGallery –SourceLocation 'https://www.powershellgallery.com/api/v2' -InstallationPolicy Trusted
 Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
 
 $PSDefaultParameterValues.Add('Install-Module:Scope', 'AllUsers')
 $PSDefaultParameterValues.Add('Install-Module:AllowClobber', $true)
 $PSDefaultParameterValues.Add('Install-Module:Force', $true)
 
-Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force
+if (!$IsCoreCLR) {Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force}
 Install-Module -Name Az
 Install-Module -Name Az.Tools.Predictor
 Install-Module -Name ImportExcel
