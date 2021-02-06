@@ -29,6 +29,8 @@ Install-Module -Name Az.Tools.Predictor
 Install-Module -Name ImportExcel
 Install-Module -Name PSScriptAnalyzer
 Install-Module -Name Pester
+# If VSCode is running, PSReadLine install may fail with a misleading error saying it needs elevation (even if install was from elevated PS)
+# Workaround is to close VSCode, then install PSReadLine
 Install-Module -Name PSReadLine -AllowPrerelease
 Install-Module -Name oh-my-posh -AllowPrerelease
 Install-Module -Name PowerShellGet
