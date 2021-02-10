@@ -23,6 +23,13 @@ $PSDefaultParameterValues.Add('Install-Module:Scope', 'AllUsers')
 $PSDefaultParameterValues.Add('Install-Module:AllowClobber', $true)
 $PSDefaultParameterValues.Add('Install-Module:Force', $true)
 
+<# Something is causing this prompt:
+NuGet provider is required to continue
+PowerShellGet requires NuGet provider version '2.8.5.201' or newer to interact with NuGet-based repositories. The NuGet provider must be available in 'C:\Program Files\PackageManagement\ProviderAssemblies' or 'C:\Users\craig\AppData\Local\PackageManagement\ProviderAssemblies'. You can also install the NuGet
+provider by running 'Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force'. Do you want PowerShellGet to install and import the NuGet provider now?
+[Y] Yes  [N] No  [S] Suspend  [?] Help (default is "Y"):
+#>
+
 if (!$IsCoreCLR) {Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force}
 Install-Module -Name Az
 Install-Module -Name Az.Tools.Predictor
