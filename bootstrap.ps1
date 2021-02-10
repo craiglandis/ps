@@ -71,8 +71,14 @@ iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/in
 reg add "HKCU\SOFTWARE\Microsoft\ServerManager" /v DoNotOpenServerManagerAtLogon /t REG_DWORD /d 1 /f
 reg add "HKCU\SOFTWARE\Microsoft\ServerManager" /v DoNotPopWACConsoleAtSMLaunch /t REG_DWORD /d 1 /f
 
+<# https://docs.chocolatey.org/en-us/faqs#what-is-the-difference-between-packages-no-suffix-as-compared-to.install.portable
+What is the difference between packages named *.install (i. e. autohotkey.install), *.portable (i. e. autohotkey.portable) and * (i. e. autohotkey)?
+tl;dr: Nearly 100% of the time, the package with no suffix (autohotkey in this example) is going to ensure the *.install. 
+Still not sure why you would call the .install version specifically.
+#>
+
 choco install 7zip.install -y
-choco install autohotkey.portable -y
+choco install autohotkey -y # \\tsclient\c\OneDrive\My\Import-ScheduledTasks.ps1
 choco install az.powershell -y
 choco install azcopy10 -y
 choco install azure-cli -y
@@ -84,7 +90,7 @@ choco install fiddler -y
 choco install gpu-z -y
 choco install greenshot -y
 choco install microsoft-edge -y
-choco install microsoft-windows-terminal -y
+choco install microsoft-windows-terminal -y # not supported on Server SKUs
 choco install microsoftazurestorageexplorer -y
 choco install notepadplusplus.install -y
 choco install powershell-core -y
