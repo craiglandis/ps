@@ -85,6 +85,16 @@ reg add "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced" /v Hi
 # Show file extensions
 reg add "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced" /v HideFileExt /t REG_DWORD /d 0 /f
 
+# Get the name of the builtin local adminstrator account
+$admin = get-localuser | where {$_.Enabled -and $_.SID.ToString().Endswith('-500')} | select -first 1
+$adminName = $admin.Name
+# Associate AutoHotkey .AHK extension with VSCode for editing
+# VSCode location if installed as user
+# $value = '\"C:\Users\' + $adminName + '\AppData\Local\Programs\Microsoft VS Code\Code.exe\" \"%1\'
+# VSCode location if installed by chocolatey
+$value = '\"C:\Program Files\Microsoft VS Code\Code.exe\" \"%1\'
+New-ItemProperty -LiteralPath 'HKLM:\SOFTWARE\Classes\AutoHotkeyScript\Shell\Edit\Command' -Name '(default)' -Value $value -PropertyType String -Force -ErrorAction SilentlyContinue
+
 <# https://docs.chocolatey.org/en-us/faqs#what-is-the-difference-between-packages-no-suffix-as-compared-to.install.portable
 What is the difference between packages named *.install (i. e. autohotkey.install), *.portable (i. e. autohotkey.portable) and * (i. e. autohotkey)?
 tl;dr: Nearly 100% of the time, the package with no suffix (autohotkey in this example) is going to ensure the *.install. 
