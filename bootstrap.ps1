@@ -18,26 +18,29 @@ Write-Output "Creating $($PROFILE.AllUsersAllHosts)"
 New-Item -Path $PROFILE.AllUsersAllHosts -Type File -Force | Out-Null
 
 #Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Console\TrueTypeFont' -Name '000' -Value 'CaskaydiaCove Nerd Font'
+
+# This needs to be before Set-PSRepository, otherwise Set-PSRepository will prompt to install it
+if (!$IsCoreCLR)
+{
+    $nuget = Get-PackageProvider -Name nuget -ErrorAction SilentlyContinue
+    if ($nuget)
+    {        
+        if ($nuget.Version -lt [Version]'2.8.5.201')
+        {   
+            Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force
+        }
+    }
+}  
+
 #Register-PSRepository -Name PSGallery –SourceLocation 'https://www.powershellgallery.com/api/v2' -InstallationPolicy Trusted
 Write-Output "Trusting PSGallery"
 Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
 
+Write-Output "Setting default parameter values"
 $PSDefaultParameterValues.Add('Install-Module:Scope', 'AllUsers')
 $PSDefaultParameterValues.Add('Install-Module:AllowClobber', $true)
 $PSDefaultParameterValues.Add('Install-Module:Force', $true)
 
-<# Something is causing this prompt:
-NuGet provider is required to continue
-PowerShellGet requires NuGet provider version '2.8.5.201' or newer to interact with NuGet-based repositories. The NuGet provider must be available in 'C:\Program Files\PackageManagement\ProviderAssemblies' or 'C:\Users\craig\AppData\Local\PackageManagement\ProviderAssemblies'. You can also install the NuGet
-provider by running 'Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force'. Do you want PowerShellGet to install and import the NuGet provider now?
-[Y] Yes  [N] No  [S] Suspend  [?] Help (default is "Y"):
-#>
-
-Write-Output "`$IsCoreCLR: $IsCoreCLR"
-if (!$IsCoreCLR)
-{    
-    Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force
-}
 Write-Output "Installing Az module"
 Install-Module -Name Az
 Write-Output "Installing Az.Tools.Predictor module"
