@@ -8,15 +8,18 @@ if ($PSBoundParameters.Count -eq 0)
     $all = $true
 }
 
-#Write-Output "`$PSBoundParameters.Count: $($PSBoundParameters.Count)"
+Write-Output "`$PSBoundParameters.Count: $($PSBoundParameters.Count)"
 
+Write-Output "Setting execution policy"
 Set-ExecutionPolicy Bypass -Scope Process -Force
 [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
 
-New-Item -Path $PROFILE.AllUsersAllHosts -Type File -Force
+Write-Output "Creating $($PROFILE.AllUsersAllHosts)"
+New-Item -Path $PROFILE.AllUsersAllHosts -Type File -Force | Out-Null
 
 #Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Console\TrueTypeFont' -Name '000' -Value 'CaskaydiaCove Nerd Font'
 #Register-PSRepository -Name PSGallery –SourceLocation 'https://www.powershellgallery.com/api/v2' -InstallationPolicy Trusted
+Write-Output "Trusting PSGallery"
 Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
 
 $PSDefaultParameterValues.Add('Install-Module:Scope', 'AllUsers')
@@ -30,14 +33,24 @@ provider by running 'Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.2
 [Y] Yes  [N] No  [S] Suspend  [?] Help (default is "Y"):
 #>
 
-if (!$IsCoreCLR) {Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force}
+Write-Output "`$IsCoreCLR: $IsCoreCLR"
+if (!$IsCoreCLR)
+{    
+    Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force
+}
+Write-Output "Installing Az module"
 Install-Module -Name Az
+Write-Output "Installing Az.Tools.Predictor module"
 Install-Module -Name Az.Tools.Predictor
+Write-Output "Installing ImportExcel module"
 Install-Module -Name ImportExcel
+Write-Output "Installing PSScriptAnalyzer module"
 Install-Module -Name PSScriptAnalyzer
+Write-Output "Installing Pester module"
 Install-Module -Name Pester
 # If VSCode is running, PSReadLine install may fail with a misleading error saying it needs elevation (even if install was from elevated PS)
 # Workaround is to close VSCode, then install PSReadLine
+Write-Output "Installing PSReadLine module"
 Install-Module -Name PSReadLine -AllowPrerelease
 Install-Module -Name oh-my-posh -AllowPrerelease
 Install-Module -Name PowerShellGet
