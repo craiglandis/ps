@@ -1,6 +1,7 @@
 #@"%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -InputFormat None -ExecutionPolicy Bypass -Command "(New-Object System.Net.WebClient).DownloadFile('https://aka.ms/bootstrap','c:\my\bootstrap.ps1');iex 'c:\my\bootstrap.ps1 -sysinternals'" 
 param(
-    [switch]$sysinternals
+    [switch]$sysinternals,
+    [switch]$nirsoft
 )
 
 if ($PSBoundParameters.Count -eq 0)
@@ -77,16 +78,36 @@ get-childitem $folderPath | foreach{$fontsFolder.CopyHere($_.FullName, 16)}
 if ($sysinternals -or $all)
 {
     #Chocolatey install of sysinternals is slow, download/extract zip is faster
-    $uri = "http://live.sysinternals.com/Files/SysinternalsSuite.zip"
+    $uri = 'http://live.sysinternals.com/Files/SysinternalsSuite.zip'
     $myPath = "$env:SystemDrive\tools"
     $outFile = "$myPath\SysinternalsSuite.zip"
     if (!(test-path $myPath)) {new-item -Path $myPath -ItemType Directory -Force}
     Invoke-WebRequest -UseBasicParsing -Uri $uri -OutFile $outFile -Verbose
     Expand-Archive -LiteralPath $outFile -DestinationPath $myPath -Force
+    Remove-Item -Path $outFile -Force
     if ($sysinternals -and !$all)
     {
         exit
     }
+}
+
+if ($nirsoft -or $all)
+{
+    $uri = 'https://www.nirsoft.net/utils/fulleventlogview-x64.zip'
+    $myPath = "$env:SystemDrive\tools"
+    $outFile = "$myPath\fulleventlogview-x64.zip"
+    if (!(test-path $myPath)) {new-item -Path $myPath -ItemType Directory -Force}
+    Invoke-WebRequest -UseBasicParsing -Uri $uri -OutFile $outFile -Verbose
+    Expand-Archive -LiteralPath $outFile -DestinationPath $myPath -Force
+    Remove-Item -Path $outFile -Force
+    if ($nirsoft -and !$all)
+    {
+        exit
+    }
+    # https://www.nirsoft.net/utils/uninstallview-x64.zip
+    # https://www.nirsoft.net/utils/eventlogchannelsview-x64.zip
+    # https://www.nirsoft.net/utils/encrypted_registry_view.html
+    # https://www.nirsoft.net/toolsdownload/rdpv.zip
 }
 
 iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))
