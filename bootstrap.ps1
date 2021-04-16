@@ -23,7 +23,7 @@ New-Item -Path $PROFILE.AllUsersAllHosts -Type File -Force | Out-Null
 # This needs to be before Set-PSRepository, otherwise Set-PSRepository will prompt to install it
 if (!$IsCoreCLR)
 {
-    $nuget = Get-PackageProvider -Name nuget -ErrorAction SilentlyContinue
+    $nuget = Get-PackageProvider -Name nuget -ErrorAction SilentlyContinue -Force
     if ($nuget)
     {        
         if ($nuget.Version -lt [Version]'2.8.5.201')
