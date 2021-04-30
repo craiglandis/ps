@@ -149,6 +149,7 @@ choco install crystaldiskmark -y
 choco install everything -y
 choco install fiddler -y
 choco install gpu-z -y
+choco install graphviz -y
 choco install greenshot -y
 choco install microsoft-edge -y
 choco install microsoft-windows-terminal -y # not supported on Server SKUs
