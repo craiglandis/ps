@@ -110,6 +110,21 @@ if ($nirsoft -or $all)
     # https://www.nirsoft.net/toolsdownload/rdpv.zip
 }
 
+if ($steamcmd -or $all)
+{
+    $uri = 'https://steamcdn-a.akamaihd.net/client/installer/steamcmd.zip'
+    $myPath = "$env:SystemDrive\tools"
+    $outFile = "$myPath\steamcmd.zip"
+    if (!(test-path $myPath)) {new-item -Path $myPath -ItemType Directory -Force}
+    Invoke-WebRequest -UseBasicParsing -Uri $uri -OutFile $outFile -Verbose
+    Expand-Archive -LiteralPath $outFile -DestinationPath $myPath -Force
+    Remove-Item -Path $outFile -Force
+    if ($steamcmd -and !$all)
+    {
+        exit
+    }
+}
+
 iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))
 
 # Disable Server Manager from starting at Windows startup
