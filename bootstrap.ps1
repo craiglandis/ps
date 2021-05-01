@@ -1,7 +1,8 @@
 #@"%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -InputFormat None -ExecutionPolicy Bypass -Command "(New-Object System.Net.WebClient).DownloadFile('https://aka.ms/bootstrap','c:\my\bootstrap.ps1');iex 'c:\my\bootstrap.ps1 -sysinternals'" 
 param(
-    [switch]$sysinternals,
-    [switch]$nirsoft
+    [switch]$nirsoft,
+    [switch]$steamcmd,
+    [switch]$sysinternals    
 )
 
 if ($PSBoundParameters.Count -eq 0)
