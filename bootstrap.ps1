@@ -1,11 +1,11 @@
 # Download and run from CMD
-# @"%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -InputFormat None -ExecutionPolicy Bypass -Command "(New-Object System.Net.WebClient).DownloadFile('https://aka.ms/bootstrap','c:\my\bootstrap.ps1');iex 'c:\my\bootstrap.ps1 -sysinternals'" 
+# @"%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -InputFormat None -ExecutionPolicy Bypass -Command "(New-Object System.Net.WebClient).DownloadFile('https://aka.ms/bootstrap','c:\my\bootstrap.ps1');iex 'c:\my\bootstrap.ps1 -sysinternals'"
 # Download and run from PS
 # (New-Object System.Net.WebClient).DownloadFile('https://aka.ms/bootstrap','c:\my\bootstrap.ps1'); iex 'c:\my\bootstrap.ps1 -sysinternals'
 param(
     [switch]$nirsoft,
     [switch]$steamcmd,
-    [switch]$sysinternals    
+    [switch]$sysinternals
 )
 
 if ($PSBoundParameters.Count -eq 0)
@@ -19,8 +19,10 @@ Write-Output "Setting execution policy"
 Set-ExecutionPolicy Bypass -Scope Process -Force
 [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
 
-Write-Output "Creating $($PROFILE.AllUsersAllHosts)"
-New-Item -Path $PROFILE.AllUsersAllHosts -Type File -Force | Out-Null
+#$profileFile = $profile.CurrentUserCurrentHost
+$profileFile = $profile.AllUsersAllHosts
+Write-Output "Creating $profileFile"
+New-Item -Path $profileFile -Type File -Force | Out-Null
 
 #Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Console\TrueTypeFont' -Name '000' -Value 'CaskaydiaCove Nerd Font'
 
@@ -29,13 +31,13 @@ if (!$IsCoreCLR)
 {
     $nuget = Get-PackageProvider -Name nuget -ErrorAction SilentlyContinue -Force
     if ($nuget)
-    {        
+    {
         if ($nuget.Version -lt [Version]'2.8.5.201')
-        {   
+        {
             Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force
         }
     }
-}  
+}
 
 #Register-PSRepository -Name PSGallery –SourceLocation 'https://www.powershellgallery.com/api/v2' -InstallationPolicy Trusted
 Write-Output "Trusting PSGallery"
@@ -46,10 +48,13 @@ $PSDefaultParameterValues.Add('Install-Module:Scope', 'AllUsers')
 $PSDefaultParameterValues.Add('Install-Module:AllowClobber', $true)
 $PSDefaultParameterValues.Add('Install-Module:Force', $true)
 
+Write-Output "Installing Az.Tools.Installer module"
+Install-Module -Name Az.Tools.Installer
 Write-Output "Installing Az module"
-Install-Module -Name Az
+#Install-Module -Name Az
+Install-AzModule -Repository PSGallery
 Write-Output "Installing Az.Tools.Predictor module"
-Install-Module -Name Az.Tools.Predictor
+Install-Module -Name Az.Tools.Predictor -AllowPrerelease
 Write-Output "Installing ImportExcel module"
 Install-Module -Name ImportExcel
 Write-Output "Installing PSScriptAnalyzer module"
@@ -153,13 +158,13 @@ New-ItemProperty -LiteralPath 'HKLM:\SOFTWARE\Classes\AutoHotkeyScript\Shell\Edi
 
 <# https://docs.chocolatey.org/en-us/faqs#what-is-the-difference-between-packages-no-suffix-as-compared-to.install.portable
 What is the difference between packages named *.install (i. e. autohotkey.install), *.portable (i. e. autohotkey.portable) and * (i. e. autohotkey)?
-tl;dr: Nearly 100% of the time, the package with no suffix (autohotkey in this example) is going to ensure the *.install. 
+tl;dr: Nearly 100% of the time, the package with no suffix (autohotkey in this example) is going to ensure the *.install.
 Still not sure why you would call the .install version specifically.
 #>
 
 choco install 7zip.install -y
 choco install autohotkey -y # \\tsclient\c\OneDrive\My\Import-ScheduledTasks.ps1
-choco install az.powershell -y
+#choco install az.powershell -y
 choco install azcopy10 -y
 choco install azure-cli -y
 choco install beyondcompare -y
