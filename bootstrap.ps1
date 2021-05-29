@@ -234,4 +234,7 @@ Invoke-WebRequest -Uri $packageUri -OutFile $packageName
 Add-AppxPackage -Path $packageName
 
 choco install chocolatey-core.extension
+
+#Adding winget equivalents as I come across them. For now winget is only supported on Windows client
+winget install 'Azure CLI'
 #>
