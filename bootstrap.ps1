@@ -236,5 +236,138 @@ Add-AppxPackage -Path $packageName
 choco install chocolatey-core.extension
 
 #Adding winget equivalents as I come across them. For now winget is only supported on Windows client
-winget install 'Azure CLI'
+Browse on https://winstall.app/ (3rd-party site not maintined by Microsoft)
+"winget search <blah>" to search 
+
+Install-Module PSWindowsUpdate
+Add-WUServiceManager -MicrosoftUpdate
+Install-WindowsUpdate -MicrosoftUpdate -AcceptAll -AutoReboot
+
+--source msstore requires first enabling that experimental feature
+run "winget settings" to open settings.json, and add - 
+
+    "experimentalFeatures": {
+        "experimentalMSStore": true
+    }
+
+winget install Microsoft.Whiteboard --exact --silent --source msstore
+winget install Microsoft.WinDbg --exact --silent --source msstore
+winget install Microsoft.WindowsTerminal --exact --silent --source msstore
+winget install Microsoft.WindowsTerminalPreview --exact --silent --source msstore
+winget install PythonSoftwareFoundation.Python.3.9 --exact --silent --source msstore
+
+
+winget install 1password --exact --silent
+winget install 7zip.7zip --exact --silent
+winget install 7zip.7zipAlpha --exact --silent
+winget install AgileBits.1Password --exact --silent
+winget install alcpu.CoreTemp --exact --silent
+winget install AntibodySoftware.WizTree --exact --silent
+winget install Apple.iTunes --exact --silent
+winget install AshleyStone.DefaultAudio --exact --silent
+winget install Audacity.Audacity --exact --silent
+winget install Balena.Etcher --exact --silent
+winget install Blizzard.BattleNet --exact --silent
+winget install BraveSoftware.BraveBrowser --exact --silent
+winget install Canonical.Ubuntu --exact --silent
+winget install CPUID.CPU-Z --exact --silent
+winget install CPUID.HWMonitor --exact --silent
+winget install CrystalDewWorld.CrystalDiskMark --exact --silent
+winget install Discord.Discord --exact --silent
+winget install Docker.DockerDesktop --exact --silent
+winget install ElectronicArts.Origin --exact --silent
+winget install EpicGames.EpicGamesLauncher --exact --silent
+winget install FinalWire.AIDA64Engineer --exact --silent
+winget install Git.Git --exact --silent
+winget install GitHub.cli --exact --silent
+winget install GitHub.GitHubDesktop --exact --silent
+winget install GitHub.GitLFS --exact --silent
+winget install GoLang.Go --exact --silent
+winget install Google.Chrome --exact --silent
+winget install Graphviz.Graphviz --exact --silent
+winget install Greenshot.Greenshot --exact --silent
+winget install HandBrake.HandBrake --exact --silent
+winget install ImageMagick.ImageMagick --exact --silent
+winget install JGraph.Draw --exact --silent
+winget install Lenovo.SystemUpdate --exact --silent
+winget install Lexikos.AutoHotkey --exact --silent
+winget install Microsoft.AzureCLI --exact --silent
+winget install Microsoft.AzureDataStudio --exact --silent
+winget install Microsoft.AzureStorageExplorer --exact --silent
+winget install Microsoft.Bicep --exact --silent
+winget install Microsoft.dotNetFramework --exact --silent
+winget install Microsoft.Edge --exact --silent
+winget install Microsoft.Git --exact --silent
+winget install Microsoft.MsGraphCLI --exact --silent
+winget install Microsoft.NuGet --exact --silent
+winget install Microsoft.Office --exact --silent
+winget install Microsoft.OneDrive --exact --silent
+winget install Microsoft.PowerBI --exact --silent
+winget install Microsoft.PowerShell --exact --silent
+winget install Microsoft.PowerShell-Preview --exact --silent
+winget install Microsoft.PowerToys --exact --silent
+winget install Microsoft.RemoteDesktopClient --exact --silent
+winget install Microsoft.SQLServerManagementStudio --exact --silent
+winget install Microsoft.Teams --exact --silent
+winget install Microsoft.VisualStudio.Enterprise --exact --silent
+winget install Microsoft.VisualStudioCode --exact --silent
+winget install Microsoft.webview2-evergreen --exact --silent
+winget install Microsoft.WindowsAdminCenter --exact --silent
+winget install Microsoft.WindowsTerminal --exact --silent
+winget install Microsoft.WindowsTerminalPreview --exact --silent
+winget install Microsoft.WindowsWDK --exact --silent
+winget install Mozilla.Firefox --exact --silent
+winget install NickeManarin.ScreenToGif --exact --silent
+winget install Notepad++.Notepad++ --exact --silent
+winget install Nvidia.GeForceExperience --exact --silent
+winget install Obsidian.Obsidian --exact --silent
+winget install OBSProject.OBSStudio --exact --silent
+winget install PrimateLabs.Geekbench --exact --silent
+winget install Python.Python --exact --silent
+winget install Rufus.Rufus --exact --silent
+winget install ScooterSoftware.BeyondCompare4 --exact --silent
+winget install SpeedCrunch.SpeedCrunch --exact --silent
+winget install Spotify.Spotify --exact --silent
+winget install TechPowerUp.GPU-Z --exact --silent
+winget install Telerik.Fiddler --exact --silent
+winget install Telerik.FiddlerEverywhere --exact --silent
+winget install twitch.twitch --exact --silent
+winget install TypeFaster.TypeFaster --exact --silent
+winget install Ubisoft.Uplay --exact --silent
+winget install Valve.Steam --exact --silent
+winget install VideoLAN.VLC --exact --silent
+winget install voidtools.Everything --exact --silent
+winget install Win32diskimager.win32diskimager --exact --silent
+winget install WinSCP.WinSCP --exact --silent
+winget install WiresharkFoundation.Wireshark --exact --silent
+winget install Zoom.Zoom --exact --silent
+
+Script to install winget itself - 
+https://github.com/al-cheb/winget_install_script/blob/main/Install-WinGet.ps1
+
+# Install NtObjectManager module
+Install-Module NtObjectManager -Force
+
+# Install winget
+$vclibs = Invoke-WebRequest -Uri "https://store.rg-adguard.net/api/GetFiles" -Method "POST" -ContentType "application/x-www-form-urlencoded" -Body "type=PackageFamilyName&url=Microsoft.VCLibs.140.00_8wekyb3d8bbwe&ring=RP&lang=en-US" -UseBasicParsing | Foreach-Object Links | Where-Object outerHTML -match "Microsoft.VCLibs.140.00_.+_x64__8wekyb3d8bbwe.appx" | Foreach-Object href
+$vclibsuwp = Invoke-WebRequest -Uri "https://store.rg-adguard.net/api/GetFiles" -Method "POST" -ContentType "application/x-www-form-urlencoded" -Body "type=PackageFamilyName&url=Microsoft.VCLibs.140.00.UWPDesktop_8wekyb3d8bbwe&ring=RP&lang=en-US" -UseBasicParsing | Foreach-Object Links | Where-Object outerHTML -match "Microsoft.VCLibs.140.00.UWPDesktop_.+_x64__8wekyb3d8bbwe.appx" | Foreach-Object href
+
+Invoke-WebRequest $vclibsuwp -OutFile Microsoft.VCLibs.140.00.UWPDesktop_8wekyb3d8bbwe.appx
+Invoke-WebRequest $vclibs -OutFile Microsoft.VCLibs.140.00_8wekyb3d8bbwe.appx
+
+Add-AppxPackage -Path .\Microsoft.VCLibs.140.00.UWPDesktop_8wekyb3d8bbwe.appx
+Add-AppxPackage -Path .\Microsoft.VCLibs.140.00_8wekyb3d8bbwe.appx
+
+Invoke-WebRequest https://github.com/microsoft/winget-cli/releases/download/v1.0.11451/Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.appxbundle -OutFile Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.appxbundle
+Add-AppxPackage -Path .\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.appxbundle
+
+# Create reparse point 
+$installationPath = (Get-AppxPackage Microsoft.DesktopAppInstaller).InstallLocation
+Set-ExecutionAlias -Path "C:\Windows\System32\winget.exe" -PackageName "Microsoft.DesktopAppInstaller_8wekyb3d8bbwe" -EntryPoint "Microsoft.DesktopAppInstaller_8wekyb3d8bbwe!winget" -Target "$installationPath\AppInstallerCLI.exe" -AppType Desktop -Version 3
+explorer.exe "shell:appsFolder\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe!winget"
+
+And another one:
+https://github.com/AdrianoCahete/winget-installer/blob/master/Install.ps1
+Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://raw.githubusercontent.com/AdrianoCahete/winget-installer/master/Install.ps1'))
+
 #>
