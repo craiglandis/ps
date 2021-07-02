@@ -1,5 +1,6 @@
 param(
     [string]$drive,
+    [string]$vhdPath,
     [string]$user,
     [string]$password
 )
@@ -21,51 +22,89 @@ if ($drive)
         exit
     }
 }
+elseif ($vhdPath)
+{
+    $requiredCmdlets = Get-Command -Module Hyper-V -Name Mount-VHD,Dismount-VHD -ErrorAction SilentlyContinue
+    if ($requiredCmdlets -and $requiredCmdlets.Count -eq 2)
+    {
+        if (!(Test-Path -Path $vhdPath))
+        {
+            Write-Error "File not found: $vhdPath"
+            exit
+        }
+        $vhd = Get-VHD -Path $vhdPath -ErrorAction Stop
+        Write-Output "Mounting VHD: $vhdPath"
+        try
+        {
+            $drives = Mount-VHD -Path $vhd.Path -PassThru | Get-Disk | Get-Partition | Get-Volume
+        }
+        catch
+        {
+            Write-Output ('Unable to mount ' + $vhd.Path + ' If attached to a VM, make sure that VM is not running.')
+            exit
+        }
+
+        Get-DiskImage -ImagePath $vhd.Path | Get-Disk| Get-Partition | Where-Object Size -gt 1GB | Set-Partition -NewDriveLetter V -ErrorAction SilentlyContinue | Out-Null
+        $drive = [string]((Get-DiskImage -ImagePath $vhd.Path | Get-Disk | Get-Partition | Where-Object Size -gt 10GB).DriveLetter + ':')
+
+        if ($drive)
+        {
+            Write-Output "VHD mounted to drive $drive"
+        }
+        else
+        {
+            Write-Output "Unable to set VHD drive letter"
+            exit
+        }
+    }
+    else
+    {
+        Write-Error "Hyper-V module not installed. To install it, run:`nEnable-WindowsOptionalFeature -Online -FeatureName  Microsoft-Hyper-V-Management-PowerShell"
+    }
+}
 else
 {
     Write-Output "Please use -drive to specify the drive letter"
     exit
 }
 
-reg load "HKLM\TEMPSOFTWARE" "$drive\Windows\System32\Config\SOFTWARE"
-reg load "HKLM\TEMPSYSTEM" "$drive\Windows\System32\Config\SYSTEM"
-$currentControlSet = ('ControlSet00' + [string](Get-ItemProperty HKLM:TEMPSYSTEM\Select).Current)
-
+Write-Output "Loading SOFTWARE registry hive"
+reg load "HKLM\TEMPSOFTWARE" "$drive\Windows\System32\Config\SOFTWARE" | Out-Null
 [int]$currentBuild = Get-ItemPropertyValue -Path 'HKLM:\TEMPSOFTWARE\Microsoft\Windows NT\CurrentVersion' -Name CurrentBuild
-
 Write-Output "Windows build: $currentBuild"
+
 if ($currentBuild -ge 14393)
 {
-    reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\Scripts" /f
-    reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\State\Machine\Scripts" /f
-    reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\Scripts\Startup\0" /f
-    reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\Scripts\Startup\0" /t REG_SZ /v GPO-ID /d LocalGPO /f
-    reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\Scripts\Startup\0" /t REG_SZ /v SOM-ID /d Local /f
-    reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\Scripts\Startup\0" /t REG_SZ /v FileSysPath /d "C:\Windows\System32\GroupPolicy\Machine" /f
-    reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\Scripts\Startup\0" /t REG_SZ /v DisplayName /d "Local Group Policy" /f
-    reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\Scripts\Startup\0" /t REG_SZ /v GPOName /d "Local Group Policy" /f
-    reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\Scripts\Startup\0" /t REG_DWORD /v PSScriptOrder /d 1 /f
-    reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\Scripts\Startup\0\0" /f
-    reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\Scripts\Startup\0\0" /t REG_SZ /v Script /d "adduser.cmd" /f
-    reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\Scripts\Startup\0\0" /t REG_SZ /v Parameters /d "" /f
-    reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\Scripts\Startup\0\0" /t REG_DWORD /v IsPowershell /d 0 /f
-    reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\Scripts\Startup\0\0" /t REG_QWORD /v ExecTime /d 0 /f
-    reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\State\Machine\Scripts\Startup\0" /f
-    reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\State\Machine\Scripts\Startup\0" /t REG_SZ /v GPO-ID /d LocalGPO /f
-    reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\State\Machine\Scripts\Startup\0" /t REG_SZ /v SOM-ID /d Local /f
-    reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\State\Machine\Scripts\Startup\0" /t REG_SZ /v FileSysPath /d "C:\Windows\System32\GroupPolicy\Machine" /f
-    reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\State\Machine\Scripts\Startup\0" /t REG_SZ /v DisplayName /d "Local Group Policy" /f
-    reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\State\Machine\Scripts\Startup\0" /t REG_SZ /v GPOName /d "Local Group Policy" /f
-    reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\State\Machine\Scripts\Startup\0" /t REG_DWORD /v PSScriptOrder /d 1 /f
-    reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\State\Machine\Scripts\Startup\0\0" /f
-    reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\State\Machine\Scripts\Startup\0\0" /t REG_SZ /v Script /d "adduser.cmd" /f
-    reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\State\Machine\Scripts\Startup\0\0" /t REG_SZ /v Parameters /d "" /f
-    reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\State\Machine\Scripts\Startup\0\0" /t REG_DWORD /v IsPowershell /d 0 /f
-    reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\State\Machine\Scripts\Startup\0\0" /t REG_QWORD /v ExecTime /d 0 /f
+    Write-Output "Adding registry config for local GPO computer startup script"
 
-    reg unload 'HKLM\TEMPSOFTWARE'
-    reg unload 'HKLM\TEMPSYSTEM'
+    reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\Scripts" /f | Out-Null
+    reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\State\Machine\Scripts" /f | Out-Null
+    reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\Scripts\Startup\0" /f | Out-Null
+    reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\Scripts\Startup\0" /t REG_SZ /v GPO-ID /d LocalGPO /f | Out-Null
+    reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\Scripts\Startup\0" /t REG_SZ /v SOM-ID /d Local /f | Out-Null
+    reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\Scripts\Startup\0" /t REG_SZ /v FileSysPath /d "C:\Windows\System32\GroupPolicy\Machine" /f | Out-Null
+    reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\Scripts\Startup\0" /t REG_SZ /v DisplayName /d "Local Group Policy" /f | Out-Null
+    reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\Scripts\Startup\0" /t REG_SZ /v GPOName /d "Local Group Policy" /f | Out-Null
+    reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\Scripts\Startup\0" /t REG_DWORD /v PSScriptOrder /d 1 /f | Out-Null
+    reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\Scripts\Startup\0\0" /f | Out-Null
+    reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\Scripts\Startup\0\0" /t REG_SZ /v Script /d "adduser.cmd" /f | Out-Null
+    reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\Scripts\Startup\0\0" /t REG_SZ /v Parameters /d "" /f | Out-Null
+    reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\Scripts\Startup\0\0" /t REG_DWORD /v IsPowershell /d 0 /f | Out-Null
+    reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\Scripts\Startup\0\0" /t REG_QWORD /v ExecTime /d 0 /f | Out-Null
+    reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\State\Machine\Scripts\Startup\0" /f | Out-Null
+    reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\State\Machine\Scripts\Startup\0" /t REG_SZ /v GPO-ID /d LocalGPO /f | Out-Null
+    reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\State\Machine\Scripts\Startup\0" /t REG_SZ /v SOM-ID /d Local /f | Out-Null
+    reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\State\Machine\Scripts\Startup\0" /t REG_SZ /v FileSysPath /d "C:\Windows\System32\GroupPolicy\Machine" /f | Out-Null
+    reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\State\Machine\Scripts\Startup\0" /t REG_SZ /v DisplayName /d "Local Group Policy" /f | Out-Null
+    reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\State\Machine\Scripts\Startup\0" /t REG_SZ /v GPOName /d "Local Group Policy" /f | Out-Null
+    reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\State\Machine\Scripts\Startup\0" /t REG_DWORD /v PSScriptOrder /d 1 /f | Out-Null
+    reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\State\Machine\Scripts\Startup\0\0" /f | Out-Null
+    reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\State\Machine\Scripts\Startup\0\0" /t REG_SZ /v Script /d "adduser.cmd" /f | Out-Null
+    reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\State\Machine\Scripts\Startup\0\0" /t REG_SZ /v Parameters /d "" /f | Out-Null
+    reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\State\Machine\Scripts\Startup\0\0" /t REG_DWORD /v IsPowershell /d 0 /f | Out-Null
+    reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\State\Machine\Scripts\Startup\0\0" /t REG_QWORD /v ExecTime /d 0 /f | Out-Null
 }
+reg unload 'HKLM\TEMPSOFTWARE' | Out-Null
 
 if ($currentBuild -ge 14393)
 {
@@ -111,12 +150,18 @@ if (test-path -Path $scriptsIniPath)
 $scriptsIni | Out-File -FilePath (New-Item -Path $scriptsIniPath -ItemType File -Force)
 
 $addUser = @"
-echo %date% %time% >> %windir%\Temp\adduser.log
-echo Creating new user >> %windir%\Temp\adduser.log
+echo START %date% %time% >> %windir%\Temp\adduser.log
+echo net user $user $password /add /y >> %windir%\Temp\adduser.log
 net user $user $password /add /y >> %windir%\Temp\adduser.log
-echo Add new user to local administrators >> >> %windir%\Temp\adduser.log
+echo net localgroup administrators $user /add >> %windir%\Temp\adduser.log
 net localgroup administrators $user /add >> %windir%\Temp\adduser.log
-echo %date% %time% >> %windir%\Temp\adduser.log
+echo wmic /namespace:\\root\CIMV2\TerminalServices PATH Win32_TerminalServiceSetting WHERE (__CLASS !="") CALL SetAllowTSConnections 1,1 >> %windir%\Temp\adduser.log
+wmic /namespace:\\root\CIMV2\TerminalServices PATH Win32_TerminalServiceSetting WHERE (__CLASS !="") CALL SetAllowTSConnections 1,1 >> %windir%\Temp\adduser.log
+echo wmic /namespace:\\root\CIMV2\TerminalServices PATH Win32_TSPermissionsSetting WHERE (__CLASS !="") CALL RestoreDefaults >> %windir%\Temp\adduser.log
+wmic /namespace:\\root\CIMV2\TerminalServices PATH Win32_TSPermissionsSetting WHERE (__CLASS !="") CALL RestoreDefaults >> %windir%\Temp\adduser.log
+echo wmic /namespace:\\root\CIMV2\TerminalServices PATH Win32_TSGeneralSetting WHERE (__CLASS !="") CALL SetSecurityLayer 0 >> %windir%\Temp\adduser.log
+wmic /namespace:\\root\CIMV2\TerminalServices PATH Win32_TSGeneralSetting WHERE (__CLASS !="") CALL SetSecurityLayer 0 >> %windir%\Temp\adduser.log
+echo END %date% %time% >> %windir%\Temp\adduser.log
 "@
 
 $addUserPath = "$drive\Windows\System32\GroupPolicy\Machine\Scripts\Startup\adduser.cmd"
@@ -127,3 +172,9 @@ if (Test-Path -Path $addUserPath)
     Rename-Item -Path $addUserPath -NewName "$addUserPath.$timestamp" -Force
 }
 $addUser | Out-File -FilePath (New-Item -Path $addUserPath -ItemType File -Force)
+
+if ($vhd.path)
+{
+    Write-Output "Dismounting VHD: $($vhd.path)"
+    Dismount-VHD $vhd.path
+}
