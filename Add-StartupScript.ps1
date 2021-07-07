@@ -1,7 +1,9 @@
 param(
     [string]$drive,
     [string]$vhdPath,
+    [Parameter(Mandatory=$true)]
     [string]$user,
+    [Parameter(Mandatory=$true)]
     [string]$password
 )
 
@@ -68,11 +70,11 @@ else
     exit
 }
 
+<#
 Write-Output "Loading SOFTWARE registry hive"
 reg load "HKLM\TEMPSOFTWARE" "$drive\Windows\System32\Config\SOFTWARE" | Out-Null
 [int]$currentBuild = Get-ItemPropertyValue -Path 'HKLM:\TEMPSOFTWARE\Microsoft\Windows NT\CurrentVersion' -Name CurrentBuild
 Write-Output "Windows build: $currentBuild"
-
 if ($currentBuild -ge 14393)
 {
     Write-Output "Adding registry config for local GPO computer startup script"
@@ -87,7 +89,7 @@ if ($currentBuild -ge 14393)
     reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\Scripts\Startup\0" /t REG_SZ /v GPOName /d "Local Group Policy" /f | Out-Null
     reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\Scripts\Startup\0" /t REG_DWORD /v PSScriptOrder /d 1 /f | Out-Null
     reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\Scripts\Startup\0\0" /f | Out-Null
-    reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\Scripts\Startup\0\0" /t REG_SZ /v Script /d "adduser.cmd" /f | Out-Null
+    reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\Scripts\Startup\0\0" /t REG_SZ /v Script /d "mitigate.cmd" /f | Out-Null
     reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\Scripts\Startup\0\0" /t REG_SZ /v Parameters /d "" /f | Out-Null
     reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\Scripts\Startup\0\0" /t REG_DWORD /v IsPowershell /d 0 /f | Out-Null
     reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\Scripts\Startup\0\0" /t REG_QWORD /v ExecTime /d 0 /f | Out-Null
@@ -99,19 +101,21 @@ if ($currentBuild -ge 14393)
     reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\State\Machine\Scripts\Startup\0" /t REG_SZ /v GPOName /d "Local Group Policy" /f | Out-Null
     reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\State\Machine\Scripts\Startup\0" /t REG_DWORD /v PSScriptOrder /d 1 /f | Out-Null
     reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\State\Machine\Scripts\Startup\0\0" /f | Out-Null
-    reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\State\Machine\Scripts\Startup\0\0" /t REG_SZ /v Script /d "adduser.cmd" /f | Out-Null
+    reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\State\Machine\Scripts\Startup\0\0" /t REG_SZ /v Script /d "mitigate.cmd" /f | Out-Null
     reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\State\Machine\Scripts\Startup\0\0" /t REG_SZ /v Parameters /d "" /f | Out-Null
     reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\State\Machine\Scripts\Startup\0\0" /t REG_DWORD /v IsPowershell /d 0 /f | Out-Null
     reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\State\Machine\Scripts\Startup\0\0" /t REG_QWORD /v ExecTime /d 0 /f | Out-Null
 }
 reg unload 'HKLM\TEMPSOFTWARE' | Out-Null
+#>
 
+<#
 if ($currentBuild -ge 14393)
 {
 $gptIni = @'
 [General]
 gPCMachineExtensionNames=[{42B5FAAE-6536-11D2-AE5A-0000F87571E3}{40B6664F-4972-11D1-A7CA-0000F87571E3}]
-Version=4
+Version=1
 '@
 }
 else
@@ -123,6 +127,14 @@ gPCMachineExtensionNames=[{42B5FAAE-6536-11D2-AE5A-0000F87571E3}{40B6664F-4972-1
 Version=1
 '@
 }
+#>
+
+$gptIni = @'
+[General]
+gPCFunctionalityVersion=2
+gPCMachineExtensionNames=[{42B5FAAE-6536-11D2-AE5A-0000F87571E3}{40B6664F-4972-11D1-A7CA-0000F87571E3}]
+Version=1
+'@
 
 $gptIniPath = "$drive\Windows\System32\GroupPolicy\gpt.ini"
 if (Test-Path -Path $gptIniPath)
@@ -137,7 +149,7 @@ $gptIni | Out-File -FilePath (New-Item -Path $gptIniPath -ItemType File -Force)
 
 $scriptsIni = @'
 [Startup]
-0CmdLine=adduser.cmd
+0CmdLine=mitigate.cmd
 0Parameters=
 '@
 $scriptsIniPath = "$drive\Windows\System32\GroupPolicy\Machine\Scripts\scripts.ini"
@@ -149,29 +161,31 @@ if (test-path -Path $scriptsIniPath)
 }
 $scriptsIni | Out-File -FilePath (New-Item -Path $scriptsIniPath -ItemType File -Force)
 
-$addUser = @"
-echo START %date% %time% >> %windir%\Temp\adduser.log
-echo net user $user $password /add /y >> %windir%\Temp\adduser.log
-net user $user $password /add /y >> %windir%\Temp\adduser.log
-echo net localgroup administrators $user /add >> %windir%\Temp\adduser.log
-net localgroup administrators $user /add >> %windir%\Temp\adduser.log
-echo wmic /namespace:\\root\CIMV2\TerminalServices PATH Win32_TerminalServiceSetting WHERE (__CLASS !="") CALL SetAllowTSConnections 1,1 >> %windir%\Temp\adduser.log
-wmic /namespace:\\root\CIMV2\TerminalServices PATH Win32_TerminalServiceSetting WHERE (__CLASS !="") CALL SetAllowTSConnections 1,1 >> %windir%\Temp\adduser.log
-echo wmic /namespace:\\root\CIMV2\TerminalServices PATH Win32_TSPermissionsSetting WHERE (__CLASS !="") CALL RestoreDefaults >> %windir%\Temp\adduser.log
-wmic /namespace:\\root\CIMV2\TerminalServices PATH Win32_TSPermissionsSetting WHERE (__CLASS !="") CALL RestoreDefaults >> %windir%\Temp\adduser.log
-echo wmic /namespace:\\root\CIMV2\TerminalServices PATH Win32_TSGeneralSetting WHERE (__CLASS !="") CALL SetSecurityLayer 0 >> %windir%\Temp\adduser.log
-wmic /namespace:\\root\CIMV2\TerminalServices PATH Win32_TSGeneralSetting WHERE (__CLASS !="") CALL SetSecurityLayer 0 >> %windir%\Temp\adduser.log
-echo END %date% %time% >> %windir%\Temp\adduser.log
+$mitigate = @"
+echo START %date% %time% >> %windir%\Temp\mitigate.log
+echo net user $user $password /add /y >> %windir%\Temp\mitigate.log
+net user $user $password /add /y >> %windir%\Temp\mitigate.log
+echo net localgroup administrators $user /add >> %windir%\Temp\mitigate.log
+net localgroup administrators $user /add >> %windir%\Temp\mitigate.log
+echo wmic /namespace:\\root\CIMV2\TerminalServices PATH Win32_TerminalServiceSetting WHERE (__CLASS !="") CALL SetAllowTSConnections 1,1 >> %windir%\Temp\mitigate.log
+wmic /namespace:\\root\CIMV2\TerminalServices PATH Win32_TerminalServiceSetting WHERE (__CLASS !="") CALL SetAllowTSConnections 1,1 >> %windir%\Temp\mitigate.log
+echo wmic /namespace:\\root\CIMV2\TerminalServices PATH Win32_TSPermissionsSetting WHERE (__CLASS !="") CALL RestoreDefaults >> %windir%\Temp\mitigate.log
+wmic /namespace:\\root\CIMV2\TerminalServices PATH Win32_TSPermissionsSetting WHERE (__CLASS !="") CALL RestoreDefaults >> %windir%\Temp\mitigate.log
+echo wmic /namespace:\\root\CIMV2\TerminalServices PATH Win32_TSGeneralSetting WHERE (__CLASS !="") CALL SetSecurityLayer 0 >> %windir%\Temp\mitigate.log
+wmic /namespace:\\root\CIMV2\TerminalServices PATH Win32_TSGeneralSetting WHERE (__CLASS !="") CALL SetSecurityLayer 0 >> %windir%\Temp\mitigate.log
+echo netsh advfirewall firewall set rule group="Remote Desktop" new enable=yes >> %windir%\Temp\mitigate.log
+netsh advfirewall firewall set rule group="Remote Desktop" new enable=yes >> %windir%\Temp\mitigate.log
+echo END %date% %time% >> %windir%\Temp\mitigate.log
 "@
 
-$addUserPath = "$drive\Windows\System32\GroupPolicy\Machine\Scripts\Startup\adduser.cmd"
-if (Test-Path -Path $addUserPath)
+$mitigatePath = "$drive\Windows\System32\GroupPolicy\Machine\Scripts\Startup\mitigate.cmd"
+if (Test-Path -Path $mitigatePath)
 {
     $timestamp = Get-Date -Format yyyyMMddHHmmssff
-    Write-Output "Renaming existing $addUserPath to $addUserPath.$timestamp"
-    Rename-Item -Path $addUserPath -NewName "$addUserPath.$timestamp" -Force
+    Write-Output "Renaming existing $mitigatePath to $mitigatePath.$timestamp"
+    Rename-Item -Path $mitigatePath -NewName "$mitigatePath.$timestamp" -Force
 }
-$addUser | Out-File -FilePath (New-Item -Path $addUserPath -ItemType File -Force)
+$mitigate | Out-File -FilePath (New-Item -Path $mitigatePath -ItemType File -Force)
 
 if ($vhd.path)
 {
