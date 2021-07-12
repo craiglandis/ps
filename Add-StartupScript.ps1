@@ -46,12 +46,21 @@ elseif ($vhdPath)
             exit
         }
 
-        Get-DiskImage -ImagePath $vhd.Path | Get-Disk| Get-Partition | Where-Object Size -gt 1GB | Set-Partition -NewDriveLetter V -ErrorAction SilentlyContinue | Out-Null
-        $drive = [string]((Get-DiskImage -ImagePath $vhd.Path | Get-Disk | Get-Partition | Where-Object Size -gt 10GB).DriveLetter + ':')
-
+        $partition = Get-DiskImage -ImagePath $vhd.Path | Get-Disk | Get-Partition | Where-Object {$_.Size -gt 10GB -and $_.IsActive -eq $true}
+        $driveLetter = $partition.DriveLetter
+        $drive = "$($driveLetter):"
         if ($drive)
         {
             Write-Output "VHD mounted to drive $drive"
+            if (Test-Path -Path $drive\Windows)
+            {
+                Write-Output "Found Windows directory $drive\Windows"
+            }
+            else
+            {
+                Write-Output "Windows directory not found on drive $drive"
+                exit
+            }
         }
         else
         {
@@ -70,64 +79,41 @@ else
     exit
 }
 
-<#
 Write-Output "Loading SOFTWARE registry hive"
 reg load "HKLM\TEMPSOFTWARE" "$drive\Windows\System32\Config\SOFTWARE" | Out-Null
 [int]$currentBuild = Get-ItemPropertyValue -Path 'HKLM:\TEMPSOFTWARE\Microsoft\Windows NT\CurrentVersion' -Name CurrentBuild
 Write-Output "Windows build: $currentBuild"
-if ($currentBuild -ge 14393)
-{
-    Write-Output "Adding registry config for local GPO computer startup script"
+Write-Output "Adding registry config for local GPO computer startup script"
 
-    reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\Scripts" /f | Out-Null
-    reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\State\Machine\Scripts" /f | Out-Null
-    reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\Scripts\Startup\0" /f | Out-Null
-    reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\Scripts\Startup\0" /t REG_SZ /v GPO-ID /d LocalGPO /f | Out-Null
-    reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\Scripts\Startup\0" /t REG_SZ /v SOM-ID /d Local /f | Out-Null
-    reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\Scripts\Startup\0" /t REG_SZ /v FileSysPath /d "C:\Windows\System32\GroupPolicy\Machine" /f | Out-Null
-    reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\Scripts\Startup\0" /t REG_SZ /v DisplayName /d "Local Group Policy" /f | Out-Null
-    reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\Scripts\Startup\0" /t REG_SZ /v GPOName /d "Local Group Policy" /f | Out-Null
-    reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\Scripts\Startup\0" /t REG_DWORD /v PSScriptOrder /d 1 /f | Out-Null
-    reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\Scripts\Startup\0\0" /f | Out-Null
-    reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\Scripts\Startup\0\0" /t REG_SZ /v Script /d "mitigate.cmd" /f | Out-Null
-    reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\Scripts\Startup\0\0" /t REG_SZ /v Parameters /d "" /f | Out-Null
-    reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\Scripts\Startup\0\0" /t REG_DWORD /v IsPowershell /d 0 /f | Out-Null
-    reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\Scripts\Startup\0\0" /t REG_QWORD /v ExecTime /d 0 /f | Out-Null
-    reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\State\Machine\Scripts\Startup\0" /f | Out-Null
-    reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\State\Machine\Scripts\Startup\0" /t REG_SZ /v GPO-ID /d LocalGPO /f | Out-Null
-    reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\State\Machine\Scripts\Startup\0" /t REG_SZ /v SOM-ID /d Local /f | Out-Null
-    reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\State\Machine\Scripts\Startup\0" /t REG_SZ /v FileSysPath /d "C:\Windows\System32\GroupPolicy\Machine" /f | Out-Null
-    reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\State\Machine\Scripts\Startup\0" /t REG_SZ /v DisplayName /d "Local Group Policy" /f | Out-Null
-    reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\State\Machine\Scripts\Startup\0" /t REG_SZ /v GPOName /d "Local Group Policy" /f | Out-Null
-    reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\State\Machine\Scripts\Startup\0" /t REG_DWORD /v PSScriptOrder /d 1 /f | Out-Null
-    reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\State\Machine\Scripts\Startup\0\0" /f | Out-Null
-    reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\State\Machine\Scripts\Startup\0\0" /t REG_SZ /v Script /d "mitigate.cmd" /f | Out-Null
-    reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\State\Machine\Scripts\Startup\0\0" /t REG_SZ /v Parameters /d "" /f | Out-Null
-    reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\State\Machine\Scripts\Startup\0\0" /t REG_DWORD /v IsPowershell /d 0 /f | Out-Null
-    reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\State\Machine\Scripts\Startup\0\0" /t REG_QWORD /v ExecTime /d 0 /f | Out-Null
-}
+reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\Scripts" /f | Out-Null
+reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\State\Machine\Scripts" /f | Out-Null
+reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\Scripts\Startup\0" /f | Out-Null
+reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\Scripts\Startup\0" /t REG_SZ /v GPO-ID /d LocalGPO /f | Out-Null
+reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\Scripts\Startup\0" /t REG_SZ /v SOM-ID /d Local /f | Out-Null
+reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\Scripts\Startup\0" /t REG_SZ /v FileSysPath /d "C:\Windows\System32\GroupPolicy\Machine" /f | Out-Null
+reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\Scripts\Startup\0" /t REG_SZ /v DisplayName /d "Local Group Policy" /f | Out-Null
+reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\Scripts\Startup\0" /t REG_SZ /v GPOName /d "Local Group Policy" /f | Out-Null
+reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\Scripts\Startup\0" /t REG_DWORD /v PSScriptOrder /d 1 /f | Out-Null
+reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\Scripts\Startup\0\0" /f | Out-Null
+reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\Scripts\Startup\0\0" /t REG_SZ /v Script /d "mitigate.cmd" /f | Out-Null
+reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\Scripts\Startup\0\0" /t REG_SZ /v Parameters /d "" /f | Out-Null
+reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\Scripts\Startup\0\0" /t REG_DWORD /v IsPowershell /d 0 /f | Out-Null
+reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\Scripts\Startup\0\0" /t REG_QWORD /v ExecTime /d 0 /f | Out-Null
+reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\State\Machine\Scripts\Startup\0" /f | Out-Null
+reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\State\Machine\Scripts\Startup\0" /t REG_SZ /v GPO-ID /d LocalGPO /f | Out-Null
+reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\State\Machine\Scripts\Startup\0" /t REG_SZ /v SOM-ID /d Local /f | Out-Null
+reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\State\Machine\Scripts\Startup\0" /t REG_SZ /v FileSysPath /d "C:\Windows\System32\GroupPolicy\Machine" /f | Out-Null
+reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\State\Machine\Scripts\Startup\0" /t REG_SZ /v DisplayName /d "Local Group Policy" /f | Out-Null
+reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\State\Machine\Scripts\Startup\0" /t REG_SZ /v GPOName /d "Local Group Policy" /f | Out-Null
+reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\State\Machine\Scripts\Startup\0" /t REG_DWORD /v PSScriptOrder /d 1 /f | Out-Null
+reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\State\Machine\Scripts\Startup\0\0" /f | Out-Null
+reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\State\Machine\Scripts\Startup\0\0" /t REG_SZ /v Script /d "mitigate.cmd" /f | Out-Null
+reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\State\Machine\Scripts\Startup\0\0" /t REG_SZ /v Parameters /d "" /f | Out-Null
+reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\State\Machine\Scripts\Startup\0\0" /t REG_DWORD /v IsPowershell /d 0 /f | Out-Null
+reg add "HKLM\TEMPSOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\State\Machine\Scripts\Startup\0\0" /t REG_QWORD /v ExecTime /d 0 /f | Out-Null
+
+Write-Output "Unloading SOFTWARE registry hive"
 reg unload 'HKLM\TEMPSOFTWARE' | Out-Null
-#>
-
-<#
-if ($currentBuild -ge 14393)
-{
-$gptIni = @'
-[General]
-gPCMachineExtensionNames=[{42B5FAAE-6536-11D2-AE5A-0000F87571E3}{40B6664F-4972-11D1-A7CA-0000F87571E3}]
-Version=1
-'@
-}
-else
-{
-$gptIni = @'
-[General]
-gPCFunctionalityVersion=2
-gPCMachineExtensionNames=[{42B5FAAE-6536-11D2-AE5A-0000F87571E3}{40B6664F-4972-11D1-A7CA-0000F87571E3}]
-Version=1
-'@
-}
-#>
 
 $gptIni = @'
 [General]
