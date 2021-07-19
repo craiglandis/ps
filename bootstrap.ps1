@@ -323,7 +323,8 @@ winget install Nvidia.GeForceExperience --exact --silent
 winget install Obsidian.Obsidian --exact --silent
 winget install OBSProject.OBSStudio --exact --silent
 winget install PrimateLabs.Geekbench --exact --silent
-winget install Python.Python --exact --silent
+winget install Python.Python.3 --exact --silent
+#winget install Python.Python.2 --exact --silent
 winget install Rufus.Rufus --exact --silent
 winget install ScooterSoftware.BeyondCompare4 --exact --silent
 winget install SpeedCrunch.SpeedCrunch --exact --silent
