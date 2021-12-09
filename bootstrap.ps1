@@ -3,6 +3,8 @@
 # Download and run from PS
 # (New-Object System.Net.WebClient).DownloadFile('https://aka.ms/bootstrap','c:\my\bootstrap.ps1'); iex 'c:\my\bootstrap.ps1 -sysinternals'
 param(
+    [switch]$vm,
+    [switch]$pc,
     [switch]$nirsoft,
     [switch]$steamcmd,
     [switch]$sysinternals
@@ -10,21 +12,22 @@ param(
 
 if ($PSBoundParameters.Count -eq 0)
 {
-    $all = $true
+    #$all = $true
 }
 
 Write-Output "`$PSBoundParameters.Count: $($PSBoundParameters.Count)"
 
-Write-Output "Setting execution policy"
-Set-ExecutionPolicy Bypass -Scope Process -Force
+$command = 'Set-ExecutionPolicy Bypass -Scope Process -Force'
+$command = 'Set-ExecutionPolicy -ExecutionPolicy Unrestricted -Force'
+Write-Output $command
+$result = Invoke-Expression -Command $command
 [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
 
-#$profileFile = $profile.CurrentUserCurrentHost
-$profileFile = $profile.AllUsersAllHosts
-Write-Output "Creating $profileFile"
-New-Item -Path $profileFile -Type File -Force | Out-Null
-
-#Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Console\TrueTypeFont' -Name '000' -Value 'CaskaydiaCove Nerd Font'
+$profileFile = $profile.CurrentUserCurrentHost
+#$profileFile = $profile.AllUsersAllHosts
+$command = "New-Item -Path $profileFile -Type File -Force | Out-Null"
+Write-Output $command
+$result = Invoke-Expression -Command $command
 
 # This needs to be before Set-PSRepository, otherwise Set-PSRepository will prompt to install it
 if (!$IsCoreCLR)
@@ -40,30 +43,32 @@ if (!$IsCoreCLR)
 }
 
 #Register-PSRepository -Name PSGallery –SourceLocation 'https://www.powershellgallery.com/api/v2' -InstallationPolicy Trusted
-Write-Output "Trusting PSGallery"
-Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
+$command = "Set-PSRepository -Name PSGallery -InstallationPolicy Trusted"
+Write-Output $command
+$result = Invoke-Expression -Command $command
 
-Write-Output "Setting default parameter values"
+Write-Output 'Setting default parameter values'
 $PSDefaultParameterValues.Add('Install-Module:Scope', 'AllUsers')
 $PSDefaultParameterValues.Add('Install-Module:AllowClobber', $true)
 $PSDefaultParameterValues.Add('Install-Module:Force', $true)
+Write-Output $PSDefaultParameterValues
 
-Write-Output "Installing Az.Tools.Installer module"
+Write-Output 'Installing Az.Tools.Installer module'
 Install-Module -Name Az.Tools.Installer
-Write-Output "Installing Az module"
+Write-Output 'Installing Az module'
 #Install-Module -Name Az
 Install-AzModule -Repository PSGallery
-Write-Output "Installing Az.Tools.Predictor module"
+Write-Output 'Installing Az.Tools.Predictor module'
 Install-Module -Name Az.Tools.Predictor -AllowPrerelease
-Write-Output "Installing ImportExcel module"
+Write-Output 'Installing ImportExcel module'
 Install-Module -Name ImportExcel
-Write-Output "Installing PSScriptAnalyzer module"
+Write-Output 'Installing PSScriptAnalyzer module'
 Install-Module -Name PSScriptAnalyzer
-Write-Output "Installing Pester module"
+Write-Output 'Installing Pester module'
 Install-Module -Name Pester
 # If VSCode is running, PSReadLine install may fail with a misleading error saying it needs elevation (even if install was from elevated PS)
 # Workaround is to close VSCode, then install PSReadLine
-Write-Output "Installing PSReadLine module"
+Write-Output 'Installing PSReadLine module'
 Install-Module -Name PSReadLine -AllowPrerelease
 Install-Module -Name oh-my-posh -AllowPrerelease
 Install-Module -Name PowerShellGet
@@ -81,8 +86,9 @@ $folderPath = "$env:temp\CascadiaCode"
 (New-Object System.Net.WebClient).DownloadFile($url, $filePath)
 Expand-Archive -Path $filePath -DestinationPath $folderPath
 $fontsFolder = (New-Object -ComObject Shell.Application).Namespace(0x14)
-get-childitem $folderPath | foreach{$fontsFolder.CopyHere($_.FullName, 16)}
+Get-ChildItem $folderPath | ForEach-Object {$fontsFolder.CopyHere($_.FullName, 16)}
 # C:\Users\<username>\AppData\Local\Microsoft\Windows\Fonts
+Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Console\TrueTypeFont' -Name '000' -Value 'CaskaydiaCove Nerd Font'
 
 if ($sysinternals -or $all)
 {
@@ -90,7 +96,7 @@ if ($sysinternals -or $all)
     $uri = 'http://live.sysinternals.com/Files/SysinternalsSuite.zip'
     $myPath = "$env:SystemDrive\tools"
     $outFile = "$myPath\SysinternalsSuite.zip"
-    if (!(test-path $myPath)) {new-item -Path $myPath -ItemType Directory -Force}
+    if (!(Test-Path $myPath)) {New-Item -Path $myPath -ItemType Directory -Force}
     Invoke-WebRequest -UseBasicParsing -Uri $uri -OutFile $outFile -Verbose
     Expand-Archive -LiteralPath $outFile -DestinationPath $myPath -Force
     Remove-Item -Path $outFile -Force
@@ -105,7 +111,7 @@ if ($nirsoft -or $all)
     $uri = 'https://www.nirsoft.net/utils/fulleventlogview-x64.zip'
     $myPath = "$env:SystemDrive\tools"
     $outFile = "$myPath\fulleventlogview-x64.zip"
-    if (!(test-path $myPath)) {new-item -Path $myPath -ItemType Directory -Force}
+    if (!(Test-Path $myPath)) {New-Item -Path $myPath -ItemType Directory -Force}
     Invoke-WebRequest -UseBasicParsing -Uri $uri -OutFile $outFile -Verbose
     Expand-Archive -LiteralPath $outFile -DestinationPath $myPath -Force
     Remove-Item -Path $outFile -Force
@@ -124,7 +130,7 @@ if ($steamcmd -or $all)
     $uri = 'https://steamcdn-a.akamaihd.net/client/installer/steamcmd.zip'
     $myPath = "$env:SystemDrive\tools"
     $outFile = "$myPath\steamcmd.zip"
-    if (!(test-path $myPath)) {new-item -Path $myPath -ItemType Directory -Force}
+    if (!(Test-Path $myPath)) {New-Item -Path $myPath -ItemType Directory -Force}
     Invoke-WebRequest -UseBasicParsing -Uri $uri -OutFile $outFile -Verbose
     Expand-Archive -LiteralPath $outFile -DestinationPath $myPath -Force
     Remove-Item -Path $outFile -Force
@@ -134,20 +140,20 @@ if ($steamcmd -or $all)
     }
 }
 
-iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))
+Invoke-Expression ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))
 
 # Disable Server Manager from starting at Windows startup
-reg add "HKCU\SOFTWARE\Microsoft\ServerManager" /v DoNotOpenServerManagerAtLogon /t REG_DWORD /d 1 /f
-reg add "HKCU\SOFTWARE\Microsoft\ServerManager" /v DoNotPopWACConsoleAtSMLaunch /t REG_DWORD /d 1 /f
+reg add 'HKCU\SOFTWARE\Microsoft\ServerManager' /v DoNotOpenServerManagerAtLogon /t REG_DWORD /d 1 /f
+reg add 'HKCU\SOFTWARE\Microsoft\ServerManager' /v DoNotPopWACConsoleAtSMLaunch /t REG_DWORD /d 1 /f
 # Enable "Always show all icons in the notification area"
-reg add "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer" /v EnableAutoTray /t REG_DWORD /d 0 /f
+reg add 'HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer' /v EnableAutoTray /t REG_DWORD /d 0 /f
 # Show hidden files and folders
-reg add "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced" /v Hidden /t REG_DWORD /d 1 /f
+reg add 'HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced' /v Hidden /t REG_DWORD /d 1 /f
 # Show file extensions
-reg add "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced" /v HideFileExt /t REG_DWORD /d 0 /f
+reg add 'HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced' /v HideFileExt /t REG_DWORD /d 0 /f
 
 # Get the name of the builtin local adminstrator account
-$admin = get-localuser | where {$_.Enabled -and $_.SID.ToString().Endswith('-500')} | select -first 1
+$admin = Get-LocalUser | Where-Object {$_.Enabled -and $_.SID.ToString().Endswith('-500')} | Select-Object -First 1
 $adminName = $admin.Name
 # Associate AutoHotkey .AHK extension with VSCode for editing
 # VSCode location if installed as user
@@ -237,18 +243,97 @@ choco install chocolatey-core.extension
 
 #Adding winget equivalents as I come across them. For now winget is only supported on Windows client
 Browse on https://winstall.app/ (3rd-party site not maintined by Microsoft)
-"winget search <blah>" to search 
+"winget search <blah>" to search
 
 Install-Module PSWindowsUpdate
 Add-WUServiceManager -MicrosoftUpdate
 Install-WindowsUpdate -MicrosoftUpdate -AcceptAll -AutoReboot
 
---source msstore requires first enabling that experimental feature
-run "winget settings" to open settings.json, and add - 
+--source msstore requires first enabling that experimental feature (this may not be needed anymore?)
+run "winget settings" to open settings.json, and add -
 
     "experimentalFeatures": {
         "experimentalMSStore": true
     }
+
+winget search 7zip.7zip.Alpha.exe --accept-source-agreements
+
+
+=============================================================================================================================================
+BOTH VM AND PC
+=============================================================================================================================================
+
+winget install --id $id --exact --silent --accept-package-agreements --accept-source-agreements
+
+7zip.7zip.Alpha.exe
+AntibodySoftware.WizTree
+Git.Git
+Greenshot.Greenshot
+Lexikos.AutoHotkey
+Microsoft.AzureCLI
+Microsoft.AzureStorageExplorer
+Microsoft.Edge
+Microsoft.PowerShell
+Microsoft.VisualStudioCode
+Microsoft.WinDbg
+Microsoft.WindowsAdminCenter
+Microsoft.WindowsTerminal
+Microsoft.WindowsTerminal
+Microsoft.WindowsTerminalPreview
+NickeManarin.ScreenToGif
+Notepad++.Notepad++
+ScooterSoftware.BeyondCompare4
+WinSCP.WinSCP
+voidtools.Everything
+
+=============================================================================================================================================
+VM ONLY
+=============================================================================================================================================
+# https://www.telerik.com/blogs/from-fiddler-classic-to-fiddler-everywhere
+Telerik.Fiddler
+# Telerik.FiddlerEverywhere
+WiresharkFoundation.Wireshark
+
+=============================================================================================================================================
+PC ONLY
+=============================================================================================================================================
+
+Apple.iTunes
+Audacity.Audacity
+CPUID.CPU-Z
+CPUID.HWMonitor
+CrystalDewWorld.CrystalDiskMark
+Discord.Discord
+ElectronicArts.EADesktop
+EpicGames.EpicGamesLauncher
+FinalWire.AIDA64Engineer
+Graphviz.Graphviz
+JGraph.Draw
+Microsoft.Bicep
+Microsoft.PowerShell-Preview
+Microsoft.PowerToys
+Microsoft.WindowsTerminalPreview
+Nvidia.GeForceExperience
+PythonSoftwareFoundation.Python.3.9
+Rufus.Rufus
+TechPowerUp.GPU-Z
+Ubisoft.Connect
+Valve.Steam
+Win32diskimager.win32diskimager
+Zoom.Zoom
+
+
+=============================================================================================================================================
+NOT SURE, NEED TO RESEARCH
+=============================================================================================================================================
+winget install Microsoft.dotNetFramework --exact --silent
+
+
+
+
+# Not sure if this needs to have WSL installed first?
+# winget install Canonical.Ubuntu --exact --silent
+
 
 winget install Microsoft.Whiteboard --exact --silent --source msstore
 winget install Microsoft.WinDbg --exact --silent --source msstore
@@ -275,7 +360,7 @@ winget install CPUID.HWMonitor --exact --silent
 winget install CrystalDewWorld.CrystalDiskMark --exact --silent
 winget install Discord.Discord --exact --silent
 winget install Docker.DockerDesktop --exact --silent
-winget install ElectronicArts.Origin --exact --silent
+winget install ElectronicArts.EADesktop --exact --silent
 winget install EpicGames.EpicGamesLauncher --exact --silent
 winget install FinalWire.AIDA64Engineer --exact --silent
 winget install Git.Git --exact --silent
@@ -343,7 +428,7 @@ winget install WinSCP.WinSCP --exact --silent
 winget install WiresharkFoundation.Wireshark --exact --silent
 winget install Zoom.Zoom --exact --silent
 
-Script to install winget itself - 
+Script to install winget itself -
 https://github.com/al-cheb/winget_install_script/blob/main/Install-WinGet.ps1
 
 # Install NtObjectManager module
@@ -362,7 +447,7 @@ Add-AppxPackage -Path .\Microsoft.VCLibs.140.00_8wekyb3d8bbwe.appx
 Invoke-WebRequest https://github.com/microsoft/winget-cli/releases/download/v1.0.11451/Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.appxbundle -OutFile Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.appxbundle
 Add-AppxPackage -Path .\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.appxbundle
 
-# Create reparse point 
+# Create reparse point
 $installationPath = (Get-AppxPackage Microsoft.DesktopAppInstaller).InstallLocation
 Set-ExecutionAlias -Path "C:\Windows\System32\winget.exe" -PackageName "Microsoft.DesktopAppInstaller_8wekyb3d8bbwe" -EntryPoint "Microsoft.DesktopAppInstaller_8wekyb3d8bbwe!winget" -Target "$installationPath\AppInstallerCLI.exe" -AppType Desktop -Version 3
 explorer.exe "shell:appsFolder\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe!winget"
@@ -371,10 +456,9 @@ And another one:
 https://github.com/AdrianoCahete/winget-installer/blob/master/Install.ps1
 Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://raw.githubusercontent.com/AdrianoCahete/winget-installer/master/Install.ps1'))
 
-# To automate installing available updates and reboot if needed: 
+# To automate installing available updates and reboot if needed:
 Install-Module PSWindowsUpdate
 Add-WUServiceManager -MicrosoftUpdate
 Install-WindowsUpdate -MicrosoftUpdate -AcceptAll -AutoReboot
-
 
 #>
