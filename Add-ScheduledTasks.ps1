@@ -8,7 +8,7 @@ function Add-ScheduledTask
         [string]$argument
     )
 
-    Write-PSFMessage "Creating scheduled task: $taskName"
+    Write-PSFMessage "Creating scheduled task: taskName: $taskName execute: $execute argument: $argument"
     $action = New-ScheduledTaskAction -Execute $execute -Argument $argument
     $trigger = New-ScheduledTaskTrigger -AtLogOn
     $userId = "$env:userdomain\$env:username"
@@ -152,11 +152,11 @@ else
 $execute = "$env:SystemRoot\System32\cmd.exe"
 
 $taskName = 'AutoHotkey'
-$argument = "/c Start `"$execute`" $ahkFilePath"
+$argument = "/c Start `"$ahkExeFilePath`" $ahkFilePath"
 Add-ScheduledTask -taskName $taskName -execute $execute -argument $argument
 
 $taskName = 'AutoHotkey_Not_Elevated'
-$argument = "/c Start `"$execute`" $ahkFilePath"
+$argument = "/c Start `"$ahkExeFilePath`" $ahkNotElevatedFilePath"
 Add-ScheduledTask -taskName $taskName -execute $execute -argument $argument
 
 $taskName = 'Caffeine'
