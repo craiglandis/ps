@@ -1,3 +1,4 @@
+# Set-ExecutionPolicy -ExecutionPolicy Unrestricted -Force; \\tsclient\c\onedrive\my\set-console.ps1
 param(
 	[switch]$UpdateShortcuts = $true, # Change to $true for shortcuts (.lnk) to be updated in addition to the registry changes. Creates backups (*.lnk.bak) before changing the existing shortcut.
 	[switch]$KeepBackupShortcuts = $false, # If $true, keeps the backup *.lnk.bak. If $false, removes the backup *.lnk.bak file.
@@ -59,7 +60,42 @@ function Set-DefaultTerminalApp
 
 Set-DefaultTerminalApp -WindowsTerminal
 
-# https://renenyffenegger.ch/notes/Windows/registry/tree/HKEY_CURRENT_USER/console/index
+# This works on vSAW also
+$cascadiaCodeZipUrl = 'https://github.com/ryanoasis/nerd-fonts/releases/download/v2.1.0/CascadiaCode.zip'
+$cascadiaCodeZipFileName = $cascadiaCodeZipUrl.Split('/')[-1]
+$cascadiaCodeZipFilePath = "$env:temp\$cascadiaCodeZipFileName"
+$cascadiaCodeExtractedFolderPath = "$env:temp\CascadiaCode"
+(New-Object System.Net.WebClient).DownloadFile($cascadiaCodeZipUrl, $cascadiaCodeZipFilePath)
+Expand-Archive -Path $cascadiaCodeZipFilePath -DestinationPath $cascadiaCodeExtractedFolderPath -Force
+
+# Installs the fonts for all users (C:\Windows\Fonts)
+$addFontScriptUrl = 'https://raw.githubusercontent.com/craiglandis/ps/master/Add-Font.ps1'
+$addFontScriptFileName = $addFontScriptUrl.Split('/')[-1]
+$addFontScriptFilePath = "$env:temp\$addFontScriptFileName"
+(New-Object System.Net.WebClient).DownloadFile($addFontScriptUrl, $addFontScriptFilePath)
+$command = "$addFontScriptFilePath -Path $cascadiaCodeExtractedFolderPath"
+Write-Output $command
+$result = Invoke-Expression -Command $command
+
+# Installs  the fonts just for current user (C:\Users\<username>\AppData\Local\Microsoft\Windows\Fonts)
+#$fontsFolder = (New-Object -ComObject Shell.Application).Namespace(0x14)
+#Get-ChildItem $folderPath | ForEach-Object {$fontsFolder.CopyHere($_.FullName, 16)}#
+
+$systemFontsPath = "$env:SystemRoot\Fonts"
+$userFontsPath = "$env:LOCALAPPDATA\Microsoft\Windows\Fonts"
+$fontFileName = "Caskaydia Cove Nerd Font Complete.ttf"
+
+if ((Test-Path -Path "$systemFontsPath\$fontFileName" -PathType Leaf) -or (Test-Path -Path "$userFontsPath\$fontFileName" -PathType Leaf))
+{
+	$faceName = 'CaskaydiaCove Nerd Font'
+}
+else
+{
+	$faceName = 'Lucida Console'
+}
+
+# This command does not work on vSAW
+Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Console\TrueTypeFont' -Name '000' -Value $faceName
 
 $fontSize = $fontSize * 65536
 
@@ -88,7 +124,7 @@ $settings = @{
 "1024x768 buffersize"  = 0xbb8005a;
 "800x600 windowsize"   = 0x1d0046;
 "800x600 buffersize"   = 0xbb80046;
-"FaceName"             = "Lucida Console";
+"FaceName"             = $faceName;
 "FontFamily"           = 0x36;
 "FontSize"             = $fontSize;
 "FontWeight"           = 0x190;
