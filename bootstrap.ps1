@@ -1,464 +1,501 @@
+# wmic path Win32_TerminalServiceSetting where AllowTSConnections="0" call SetAllowTSConnections "1"
+# reg add "HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Terminal Server" /v fDenyTSConnections /t REG_DWORD /d 0 /f
+# netsh advfirewall firewall set rule group="remote desktop" new enable=Yes
 # Download and run from CMD
 # @"%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -InputFormat None -ExecutionPolicy Bypass -Command "(New-Object System.Net.WebClient).DownloadFile('https://aka.ms/bootstrap','c:\my\bootstrap.ps1');iex 'c:\my\bootstrap.ps1 -sysinternals'"
 # Download and run from PS
 # (New-Object System.Net.WebClient).DownloadFile('https://aka.ms/bootstrap','c:\my\bootstrap.ps1'); iex 'c:\my\bootstrap.ps1 -sysinternals'
+# Run from RDP client
+# Set-ExecutionPolicy -ExecutionPolicy Unrestricted -Force; Invoke-Expression ((New-Object Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))
+# Set-ExecutionPolicy -ExecutionPolicy Unrestricted -Force; \\tsclient\c\onedrive\my\bootstrap.ps1 -group All
+[CmdletBinding()]
 param(
-    [switch]$vm,
-    [switch]$pc,
-    [switch]$nirsoft,
-    [switch]$steamcmd,
-    [switch]$sysinternals
+    [ValidateSet('PC', 'VM', 'VSAW', 'All')]
+    [string]$group = 'PC',
+    [switch]$show,
+    [string]$toolsPath = 'C:\OneDrive\Tools',
+    [string]$myPath = 'C:\OneDrive\My'
 )
-
-if ($PSBoundParameters.Count -eq 0)
+DynamicParam
 {
-    #$all = $true
+    $ParameterName = 'app'
+    $RuntimeParameterDictionary = New-Object System.Management.Automation.RuntimeDefinedParameterDictionary
+    $AttributeCollection = New-Object System.Collections.ObjectModel.Collection[System.Attribute]
+    $ParameterAttribute = New-Object System.Management.Automation.ParameterAttribute
+    $ParameterAttribute.Mandatory = $false
+    $ParameterAttribute.Position = 1
+    $AttributeCollection.Add($ParameterAttribute)
+    #TODO: Make this download apps.json from github
+    $arrSet = (Get-Content -Path $PSScriptRoot\apps.json | ConvertFrom-Json).Name
+    $ValidateSetAttribute = New-Object System.Management.Automation.ValidateSetAttribute($arrSet)
+    $AttributeCollection.Add($ValidateSetAttribute)
+    $RuntimeParameter = New-Object System.Management.Automation.RuntimeDefinedParameter($ParameterName, [string], $AttributeCollection)
+    $RuntimeParameterDictionary.Add($ParameterName, $RuntimeParameter)
+    return $RuntimeParameterDictionary
 }
-
-Write-Output "`$PSBoundParameters.Count: $($PSBoundParameters.Count)"
-
-$command = 'Set-ExecutionPolicy Bypass -Scope Process -Force'
-$command = 'Set-ExecutionPolicy -ExecutionPolicy Unrestricted -Force'
-Write-Output $command
-$result = Invoke-Expression -Command $command
-[System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
-
-$profileFile = $profile.CurrentUserCurrentHost
-#$profileFile = $profile.AllUsersAllHosts
-$command = "New-Item -Path $profileFile -Type File -Force | Out-Null"
-Write-Output $command
-$result = Invoke-Expression -Command $command
-
-# This needs to be before Set-PSRepository, otherwise Set-PSRepository will prompt to install it
-if (!$IsCoreCLR)
+begin
 {
-    $nuget = Get-PackageProvider -Name nuget -ErrorAction SilentlyContinue -Force
-    if ($nuget)
+    $app = $PsBoundParameters[$ParameterName]
+}
+process
+{
+    function Invoke-ExpressionWithLogging
     {
-        if ($nuget.Version -lt [Version]'2.8.5.201')
+        param(
+            [string]$command
+        )
+        Write-PSFMessage $command
+        Invoke-Expression -Command $command
+    }
+
+    $scriptStartTime = Get-Date
+    $scriptName = Split-Path -Path $PSCommandPath -Leaf
+    $scriptBaseName = $scriptName.TrimEnd('ps1')
+    # Alias Write-PSFMessage to Write-PSFMessage until confirming PSFramework module is installed
+    Set-Alias -Name Write-PSFMessage -Value Write-Output
+    $PSDefaultParameterValues['Write-PSFMessage:Level'] = 'Output'
+    [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
+
+    $apps = Get-Content -Path $PSScriptRoot\apps.json | ConvertFrom-Json
+
+    if ($show)
+    {
+        $apps = $apps | Where-Object {$_.Groups -contains $group}
+        Write-PSFMessage $apps
+        exit
+    }
+
+    $win32_OperatingSystem = Get-CimInstance -ClassName Win32_OperatingSystem
+    $productType = $win32_OperatingSystem.ProductType
+    $osVersion = ($win32_OperatingSystem | Select-Object @{Label = 'OSVersion'; Expression = {"$($_.Caption) $($_.Version)"}}).OSVersion
+
+    # 1 = Workstation, 2 = Domain controller, 3 = Server
+    switch ($productType)
+    {
+        1 {$isWindowsClient = $true}
+        2 {$isWindowsServer = $true}
+        3 {$isWindowsServer = $true}
+    }
+
+    # https://en.wikipedia.org/wiki/List_of_Microsoft_Windows_versions
+    switch -regex ($osVersion)
+    {
+        '7601' {if ($isWindowsServer) {$os = 'WS08R2'; $isWS08R2 = $true} else {$os = 'WIN7'; $isWin7 = $true}}
+        '9200' {if ($isWindowsServer) {$os = 'WS12'; $isWS12 = $true} else {$os = 'WIN8'; $isWin8 = $true}}
+        '9600' {if ($isWindowsServer) {$os = 'WS12R2'; $isWS12R2 = $true} else {$os = 'WIN81'; $isWin81 = $true}}
+        '10240' {$os = 'WIN10'; $isWin10 = $true} # 1507 Threshold 2
+        '10586' {$os = 'WIN10'; $isWin10 = $true} # 1511 Threshold 2
+        '14393' {if ($isWindowsServer) {$os = 'WS16'; $isWS16 = $true} else {$os = 'WIN10'; $isWin10 = $true}} # 1607 Redstone 1
+        '15063' {$os = 'WIN10'; $isWin10 = $true} # RS2 1703 Redstone 2
+        '16299' {if ($isWindowsServer) {$os = 'WS1709'} else {$os = 'WIN10'; $isWin10 = $true}} # 1709 (Redstone 3)
+        '17134' {if ($isWindowsServer) {$os = 'WS1803'} else {$os = 'WIN10'; $isWin10 = $true}} # 1803 (Redstone 4)
+        '17763' {if ($isWindowsServer) {$os = 'WS19'} else {$os = 'WIN10'; $isWin10 = $true}} # 1809 October 2018 Update (Redstone 5)
+        '18362' {if ($isWindowsServer) {$os = 'WS1909'} else {$os = 'WIN10'; $isWin10 = $true}} # 1903 19H1 November 2019 Update
+        '18363' {if ($isWindowsServer) {$os = 'WS1909'} else {$os = 'WIN10'; $isWin10 = $true}} # 1909 19H2 November 2019 Update
+        '19041' {if ($isWindowsServer) {$os = 'WS2004'} else {$os = 'WIN10'; $isWin10 = $true}} # 2004 20H1 May 2020 Update
+        '19042' {if ($isWindowsServer) {$os = 'WS20H2'} else {$os = 'WIN10'; $isWin10 = $true}} # 20H2 October 2020 Update
+        '19043' {$os = 'WIN10'; $isWin10 = $true} # 21H1 May 2021 Update
+        '19044' {$os = 'WIN10'; $isWin10 = $true} # 21H2 November 2021 Update
+        '20348' {$os = 'WS22'; $isWS22 = $true} # 21H2
+        '22000' {$os = 'WIN11'; $isWin11 = $true} # 21H2
+        default {$os = 'Unknown'}
+    }
+
+    Write-PSFMessage "OS: $os ($osVersion)"
+    Invoke-ExpressionWithLogging -command 'Set-ExecutionPolicy -ExecutionPolicy Unrestricted -Force'
+    #$command = 'Set-ExecutionPolicy -ExecutionPolicy Unrestricted -Force'
+    #Write-PSFMessage $command
+    #Invoke-Expression -Command $command
+
+    # This needs to be before Set-PSRepository, otherwise Set-PSRepository will prompt to install it
+    if ($PSEdition -eq 'Desktop')
+    {
+        Write-PSFMessage 'Verifying Nuget 2.8.5.201+ is installed'
+        $nuget = Get-PackageProvider -Name nuget -ErrorAction SilentlyContinue -Force
+        if (!$nuget -or $nuget.Version -lt [Version]'2.8.5.201')
         {
-            Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force
+            Invoke-ExpressionWithLogging -command 'Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force'
+            #Write-PSFMessage 'Installing Nuget 2.8.5.201+'
+            #Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force
+        }
+        else
+        {
+            Write-PSFMessage "Nuget $($nuget.Version) already installed"
         }
     }
-}
 
-#Register-PSRepository -Name PSGallery –SourceLocation 'https://www.powershellgallery.com/api/v2' -InstallationPolicy Trusted
-$command = "Set-PSRepository -Name PSGallery -InstallationPolicy Trusted"
-Write-Output $command
-$result = Invoke-Expression -Command $command
+    #Register-PSRepository -Name PSGallery –SourceLocation 'https://www.powershellgallery.com/api/v2' -InstallationPolicy Trusted
+    # Is this really necessary???
+    # Invoke-ExpressionWithLogging -command 'Set-PSRepository -Name PSGallery -InstallationPolicy Trusted'
+    #$command = 'Set-PSRepository -Name PSGallery -InstallationPolicy Trusted'
+    #Write-PSFMessage $command
+    #Invoke-Expression -Command $command
 
-Write-Output 'Setting default parameter values'
-$PSDefaultParameterValues.Add('Install-Module:Scope', 'AllUsers')
-$PSDefaultParameterValues.Add('Install-Module:AllowClobber', $true)
-$PSDefaultParameterValues.Add('Install-Module:Force', $true)
-Write-Output $PSDefaultParameterValues
-
-Write-Output 'Installing Az.Tools.Installer module'
-Install-Module -Name Az.Tools.Installer
-Write-Output 'Installing Az module'
-#Install-Module -Name Az
-Install-AzModule -Repository PSGallery
-Write-Output 'Installing Az.Tools.Predictor module'
-Install-Module -Name Az.Tools.Predictor -AllowPrerelease
-Write-Output 'Installing ImportExcel module'
-Install-Module -Name ImportExcel
-Write-Output 'Installing PSScriptAnalyzer module'
-Install-Module -Name PSScriptAnalyzer
-Write-Output 'Installing Pester module'
-Install-Module -Name Pester
-# If VSCode is running, PSReadLine install may fail with a misleading error saying it needs elevation (even if install was from elevated PS)
-# Workaround is to close VSCode, then install PSReadLine
-Write-Output 'Installing PSReadLine module'
-Install-Module -Name PSReadLine -AllowPrerelease
-Install-Module -Name oh-my-posh -AllowPrerelease
-Install-Module -Name PowerShellGet
-Install-Module -Name PSWindowsUpdate
-Install-Module -Name PackageManagement
-Install-Module -Name SHiPS
-Install-Module -Name posh-git
-Install-Module -Name PoshRSJob
-Install-Module -Name posh-gist
-Install-Module -Name Terminal-Icons
-
-$url = 'https://github.com/ryanoasis/nerd-fonts/releases/download/v2.1.0/CascadiaCode.zip'
-$filePath = "$env:temp\CascadiaCode.zip"
-$folderPath = "$env:temp\CascadiaCode"
-(New-Object System.Net.WebClient).DownloadFile($url, $filePath)
-Expand-Archive -Path $filePath -DestinationPath $folderPath
-$fontsFolder = (New-Object -ComObject Shell.Application).Namespace(0x14)
-Get-ChildItem $folderPath | ForEach-Object {$fontsFolder.CopyHere($_.FullName, 16)}
-# C:\Users\<username>\AppData\Local\Microsoft\Windows\Fonts
-Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Console\TrueTypeFont' -Name '000' -Value 'CaskaydiaCove Nerd Font'
-
-if ($sysinternals -or $all)
-{
-    #Chocolatey install of sysinternals is slow, download/extract zip is faster
-    $uri = 'http://live.sysinternals.com/Files/SysinternalsSuite.zip'
-    $myPath = "$env:SystemDrive\tools"
-    $outFile = "$myPath\SysinternalsSuite.zip"
-    if (!(Test-Path $myPath)) {New-Item -Path $myPath -ItemType Directory -Force}
-    Invoke-WebRequest -UseBasicParsing -Uri $uri -OutFile $outFile -Verbose
-    Expand-Archive -LiteralPath $outFile -DestinationPath $myPath -Force
-    Remove-Item -Path $outFile -Force
-    if ($sysinternals -and !$all)
+    # https://psframework.org/
+    Import-Module -Name PSFramework -ErrorAction SilentlyContinue
+    $psframework = Get-Module -Name PSFramework -ErrorAction SilentlyContinue
+    if (!$psframework)
     {
+        Write-PSFMessage 'PSFramework module not found, installing it'
+        Install-Module -Name PSFramework -Repository PSGallery -Scope CurrentUser -AllowClobber -Force -ErrorAction SilentlyContinue
+        Import-Module -Name PSFramework -ErrorAction SilentlyContinue
+        $psframework = Get-Module -Name PSFramework -ErrorAction SilentlyContinue
+        if (!$psframework)
+        {
+            Write-PSFMessage 'PSFramework module failed to install'
+        }
+    }
+
+    if ($psframework)
+    {
+        Remove-Item Alias:Write-PSFMessage -Force -ErrorAction SilentlyContinue
+        <#
+        $paramSetPSFLoggingProvider = @{
+            Name         = 'logfile'
+            InstanceName = $scriptBaseName
+            FilePath     = "$env:USERPROFILE\Desktop\$($scriptBaseName)_$(Get-Date -f yyyyMMddHHmmss)"
+            Enabled      = $true
+        }
+        Set-PSFLoggingProvider @paramSetPSFLoggingProvider
+        #>
+        Write-PSFMessage "PSFramework module $($psframework.Version)"
+    }
+
+    $profileFile = $profile.CurrentUserCurrentHost
+    if (Test-Path -Path $profileFile -PathType Leaf)
+    {
+        Write-PSFMessage "$profileFile already exists, don't need to create it"
+    }
+    else
+    {
+        Invoke-ExpressionWithLogging -command "New-Item -Path $profileFile -Type File -Force | Out-Null"
+        #$command = "New-Item -Path $profileFile -Type File -Force | Out-Null"
+        #Write-PSFMessage $command
+        #Invoke-Expression -Command $command
+    }
+
+    $ErrorActionPreference = 'SilentlyContinue'
+    $chocoVersion = choco -v
+    $ErrorActionPreference = 'Continue'
+
+    if ($chocoVersion)
+    {
+        Write-PSFMessage "Chocolatey $chocoVersion already installed"
+    }
+    else
+    {
+        #Write-PSFMessage "Installing Chocolatey"
+        Invoke-ExpressionWithLogging -command "Invoke-Expression ((New-Object Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))"
+        #$command = "Invoke-Expression ((New-Object Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))"
+        #Write-PSFMessage $command
+        #Invoke-Expression -Command $command
+        $ErrorActionPreference = 'SilentlyContinue'
+        $chocoVersion = choco -v
+        $ErrorActionPreference = 'Continue'
+        if ($chocoVersion)
+        {
+            Write-PSFMessage "Chocolatey $chocoVersion already installed"
+        }
+        else
+        {
+            Write-PSFMessage 'Chocolatey failed to install'
+            exit
+        }
+    }
+
+    if ($chocoVersion)
+    {
+        Write-PSFMessage "Chocolatey $chocoVersion successfully installed"
+    }
+    else
+    {
+        Write-PSFMessage 'Chocolatey install failed'
         exit
     }
-}
 
-if ($nirsoft -or $all)
-{
-    $uri = 'https://www.nirsoft.net/utils/fulleventlogview-x64.zip'
-    $myPath = "$env:SystemDrive\tools"
-    $outFile = "$myPath\fulleventlogview-x64.zip"
-    if (!(Test-Path $myPath)) {New-Item -Path $myPath -ItemType Directory -Force}
-    Invoke-WebRequest -UseBasicParsing -Uri $uri -OutFile $outFile -Verbose
-    Expand-Archive -LiteralPath $outFile -DestinationPath $myPath -Force
-    Remove-Item -Path $outFile -Force
-    if ($nirsoft -and !$all)
+    if ($group -ne 'All')
     {
-        exit
+        $apps | Where-Object {$_.Groups -contains $group}
     }
-    # https://www.nirsoft.net/utils/uninstallview-x64.zip
-    # https://www.nirsoft.net/utils/eventlogchannelsview-x64.zip
-    # https://www.nirsoft.net/utils/encrypted_registry_view.html
-    # https://www.nirsoft.net/toolsdownload/rdpv.zip
-}
 
-if ($steamcmd -or $all)
-{
-    $uri = 'https://steamcdn-a.akamaihd.net/client/installer/steamcmd.zip'
-    $myPath = "$env:SystemDrive\tools"
-    $outFile = "$myPath\steamcmd.zip"
-    if (!(Test-Path $myPath)) {New-Item -Path $myPath -ItemType Directory -Force}
-    Invoke-WebRequest -UseBasicParsing -Uri $uri -OutFile $outFile -Verbose
-    Expand-Archive -LiteralPath $outFile -DestinationPath $myPath -Force
-    Remove-Item -Path $outFile -Force
-    if ($steamcmd -and !$all)
+    Write-PSFMessage "Mode: $group"
+    Write-PSFMessage "$($apps.Count) apps to be installed"
+
+    #$apps | Where-Object {$_.Name -in '7-Zip','AutoHotkey', 'Sysinternals Suite', '.NET Desktop Runtime 6.0.1', 'Cascadia Font Family', 'Everything', 'Greenshot', 'Microsoft 365 Apps for enterprise', 'Microsoft Edge', 'Microsoft Teams', 'Notepad++', 'PowerShell', 'PowerShell Preview', 'Steam', 'Visual Studio Code', 'Windows Terminal', 'Windows Terminal Preview'} | ForEach-Object {
+    #$apps | Where-Object {$_.Name -eq '7-Zip'} | ForEach-Object {
+    $apps | ForEach-Object {
+
+        $app = $_
+        Write-PSFMessage "Installing: $($app.Name)"
+
+        if ($app.ChocolateyName -and ($app.WingetName -or !$app.WingetName))
+        {
+            $appName = $app.ChocolateyName
+            $useChocolatey = $true
+            if ($app.ChocolateyParams)
+            {
+                $chocolateyParams = $app.ChocolateyParams
+            }
+            else
+            {
+                $chocolateyParams = $null
+            }
+        }
+        elseif ($app.WingetName)
+        {
+            $appName = $app.WingetName
+        }
+        else
+        {
+            $appName = ''
+        }
+
+        if ($appName -and $useChocolatey)
+        {
+            Remove-Variable useChocolatey -Force
+            $command = "choco install $appName -y"
+            if ($chocolateyParams)
+            {
+                # EXAMPLE: choco install sysinternals --params "/InstallDir:C:\your\install\path"
+                $command = "$command --params `"$chocolateyParams`""
+                $command = $command.Replace('TOOLSPATH', $toolsPath)
+                $command = $command.Replace('MYPATH', $myPath)
+            }
+            Invoke-ExpressionWithLogging -command $command
+            #Write-PSFMessage $command
+            #Invoke-Expression -Command $command
+        }
+        elseif ($appName -and !$useChocolatey)
+        {
+            $command = "winget install --id $appName --exact --silent --accept-package-agreements --accept-source-agreements"
+            Invoke-ExpressionWithLogging -command $command
+            #Write-PSFMessage $command
+            #Invoke-Expression -Command $command
+        }
+    }
+
+    <#
+    The sysinternals package tries to create the specified InstallDir and fails if it already exists
+    ERROR: Exception calling "CreateDirectory" with "1" argument(s): "Cannot create "C:\OneDrive\Tools" because a file or directory with the same name already exists."
+    So don't precreate these, let the package create them, and if needed, make sure they are created after all package installs are done
+    #>
+    if (Test-Path -Path $toolsPath -PathType Container)
     {
-        exit
+        Write-PSFMessage "$toolsPath already exists, don't need to create it"
     }
+    else
+    {
+        Invoke-ExpressionWithLogging -command "New-Item -Path $toolsPath -Type File -Force | Out-Null"
+        #$command = "New-Item -Path $toolsPath -Type File -Force | Out-Null"
+        #Write-PSFMessage $command
+        #Invoke-Expression -Command $command
+    }
+
+    if (Test-Path -Path $myPath -PathType Container)
+    {
+        Write-PSFMessage "$myPath already exists, don't need to create it"
+    }
+    else
+    {
+        Invoke-ExpressionWithLogging -command "New-Item -Path $myPath -Type Directory -Force | Out-Null"
+        #$command = "New-Item -Path $myPath -Type File -Force | Out-Null"
+        #Write-PSFMessage $command
+        #Invoke-Expression -Command $command
+    }
+
+    # https://stackoverflow.com/questions/714877/setting-windows-powershell-environment-variables
+    Write-PSFMessage "Adding $toolsPath and $myPath to user Path environment variable"
+    $newUserPath = "$env:Path;$toolsPath;$myPath"
+    Invoke-ExpressionWithLogging -command "[Environment]::SetEnvironmentVariable('Path', '$newUserPath', 'User')"
+    #$command = "[Environment]::SetEnvironmentVariable('Path', '$newUserPath', 'User')"
+    #Write-PSFMessage $command
+    #Invoke-Expression -Command $command
+
+    $userPathFromRegistry = (Get-ItemProperty -Path 'HKCU:\Environment' -Name Path).Path
+    $separator = "`n$('='*160)`n"
+    Write-PSFMessage "$separator`$userPathFromRegistry: $userPathFromRegistry$separator"
+
+    Invoke-ExpressionWithLogging -command 'Remove-Item "$env:public\Desktop\*.lnk" -Force'
+    Invoke-ExpressionWithLogging -command 'Remove-Item "$env:userprofile\desktop\*.lnk" -Force'
+
+    $webClient = New-Object System.Net.WebClient
+
+    $scriptFileUrls = @(
+        'https://raw.githubusercontent.com/craiglandis/ps/master/Set-Cursor.ps1',
+        'https://raw.githubusercontent.com/craiglandis/ps/master/Set-Console.ps1',
+        'https://raw.githubusercontent.com/craiglandis/ps/master/Add-ScheduledTasks.ps1'
+    )
+
+    $scriptFileUrls | ForEach-Object {
+        Invoke-Expression ($webClient.DownloadString($_))
+    }
+
+    $regFileUrls = @(
+        'https://raw.githubusercontent.com/craiglandis/ps/master/7-zip_auto_extract_downloaded_zip.reg',
+        'https://raw.githubusercontent.com/craiglandis/ps/master/7-zip_double-click_extract_to_folder.reg'
+    )
+
+    $regFileUrls | ForEach-Object {
+        $regFileUrl = $_
+        $regFileName = $regFileUrl.Split('/')[-1]
+        $webClient.DownloadFile($regFileUrl, $regFileName)
+        if (Test-Path -Path $regFileName -PathType Leaf)
+        {
+            Invoke-ExpressionWithLogging -command "reg import $regFileName"
+            #$command = "reg import $regFileName"
+            #Write-PSFMessage $command
+            #Invoke-Expression -Command $command
+        }
+    }
+
+    $windowsTerminalSettingsUrl = 'https://raw.githubusercontent.com/craiglandis/ps/master/windows-terminal-settings.json'
+
+    $windowsTerminalSettingsFilePaths = @(
+        "$env:LOCALAPPDATA\Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState\settings.json"
+        "$env:LOCALAPPDATA\Packages\Microsoft.WindowsTerminalPreview_8wekyb3d8bbwe\LocalState\settings.json"
+    )
+
+    $windowsTerminalSettingsFilePaths | ForEach-Object {
+        $windowsTerminalSettingsFilePath = $_
+        if (Test-Path -Path $windowsTerminalSettingsFilePath -PathType Leaf)
+        {
+            Rename-Item -Path $windowsTerminalSettingsFilePath -NewName "$($windowsTerminalSettingsFilePath.Split('\')[-1]).original"
+            (New-Object System.Net.WebClient).DownloadFile($windowsTerminalSettingsUrl, $windowsTerminalSettingsFilePath)
+        }
+    }
+
+    if ($isWin11 -and $group -eq 'PC')
+    {
+        Invoke-ExpressionWithLogging -command 'wsl --install'
+    }
+    # Configure shell
+    # Kusto Explorer https://aka.ms/ke
+    # Import Kusto connections
+    # Visio
+
+    if ($isWindowsServer)
+    {
+        # Disable Server Manager from starting at Windows startup
+        reg add 'HKCU\SOFTWARE\Microsoft\ServerManager' /v DoNotOpenServerManagerAtLogon /t REG_DWORD /d 1 /f
+        reg add 'HKCU\SOFTWARE\Microsoft\ServerManager' /v DoNotPopWACConsoleAtSMLaunch /t REG_DWORD /d 1 /f
+    }
+
+    if ($isWin11)
+    {
+        reg add 'HKCU\Software\Classes\CLSID\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}\InprocServer32' /f /ve
+    }
+
+    if ($isWin10)
+    {
+        # Enable "Always show all icons in the notification area"
+        reg add 'HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer' /v EnableAutoTray /t REG_DWORD /d 0 /f
+    }
+
+    # Config for all Windows versions
+    # Show file extensions
+    reg add 'HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced' /v HideFileExt /t REG_DWORD /d 0 /f
+    # Show hidden files
+    reg add 'HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced' /v Hidden /t REG_DWORD /d 1 /f
+    # Show protected operating system files
+    reg add 'HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced' /v ShowSuperHidden /t REG_DWORD /d 0 /f
+    # Explorer show compressed files color
+    reg add 'HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced' /v ShowCompColor /t REG_DWORD /d 1 /f
+    # Taskbar on left instead of center
+    reg add 'HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced' /v TaskbarAl /t REG_DWORD /d 0 /f
+
+    $nppSettingsZipUrl = 'https://github.com/craiglandis/ps/raw/master/npp-settings.zip'
+    $nppSettingsZipFileName = $nppSettingsZipUrl.Split('/')[-1]
+    $nppSettingsZipFilePath = "$env:temp\$nppSettingsZipFileName"
+    $nppSettingsTempFolderPath = "$env:TEMP\$($nppSettingsZipFileName.Replace('.zip',''))"
+    $nppSettingsFolderPath = 'C:\OneDrive\npp'
+    $nppAppDataPath = "$env:APPDATA\Notepad++"
+    $nppCloudFolderPath = "$nppAppDataPath\cloud"
+    $nppCloudFilePath = "$nppCloudFolderPath\choice"
+
+    if (Test-Path -Path $nppSettingsFolderPath -PathType Container)
+    {
+        Write-PSFMessage "$nppSettingsFolderPath already exists, don't need to create it"
+    }
+    else
+    {
+        Invoke-ExpressionWithLogging -command "New-Item -Path $nppSettingsFolderPath -Type Directory -Force | Out-Null"
+    }
+
+    (New-Object System.Net.WebClient).DownloadFile($nppSettingsZipUrl, $nppSettingsZipFilePath)
+    Expand-Archive -Path $nppSettingsZipFilePath -DestinationPath $nppSettingsTempFolderPath -Force
+    Copy-Item -Path $nppSettingsTempFolderPath\* -Destination $nppSettingsFolderPath
+    Copy-Item -Path $nppSettingsTempFolderPath\* -Destination $nppAppDataPath
+
+    if (Test-Path -Path $nppCloudFolderPath -PathType Container)
+    {
+        Write-PSFMessage "$nppSettingsFolderPath already exists, don't need to create it"
+    }
+    else
+    {
+        Invoke-ExpressionWithLogging -command "New-Item -Path $nppCloudFolderPath -Type Directory -Force | Out-Null"
+    }
+    Set-Content -Path "$env:APPDATA\Notepad++\cloud\choice" -Value $nppSettingsFolderPath -Force
+
+    # The chocolatey package for Everything includes an old version (1.1.0.9) of the es.exe CLI tool
+    # Delete that one, then download the latest (1.1.0.21) from the voidtools site
+    Remove-Item -Path "$env:ProgramData\chocolatey\bin\es.exe" -Force
+    Remove-Item -Path "$env:ProgramData\chocolatey\lib\Everything\tools\es.exe" -Force
+    $esZipUrl = 'https://www.voidtools.com/ES-1.1.0.21.zip'
+    $esZipFileName = $esZipUrl.Split('/')[-1]
+    $esZipFilePath = "$env:TEMP\$esZipFileName"
+    (New-Object System.Net.WebClient).DownloadFile($esZipUrl, $esZipFilePath)
+    Expand-Archive -Path $esZipFilePath -DestinationPath $toolsPath -Force
+
+    $esIniUrl = 'https://raw.githubusercontent.com/craiglandis/ps/master/es.ini'
+    $esIniFileName = $esIniUrl.Split('/')[-1]
+    $esIniFilePath = "$toolsPath\$esIniFileName"
+    (New-Object System.Net.WebClient).DownloadFile($esIniUrl, $esIniFilePath)
+
+    if ($group -in 'PC', 'VM')
+    {
+        # Download some Nirsoft tools into the tools path
+        Invoke-ExpressionWithLogging -command "Invoke-Expression ((New-Object Net.WebClient).DownloadString('https://raw.githubusercontent.com/craiglandis/ps/master/Get-NirsoftTools.ps1'))"
+    }
+
+    $ahkZipFileUrl = 'https://www.autohotkey.com/download/ahk.zip'
+    $ahkZipFileName = $ahkZipFileUrl.Split('/')[-1]
+    $ahkFolderPath = "$env:userprofile\downloads\$($ahkZipFileName.Replace('.zip',''))"
+    (New-Object System.Net.WebClient).DownloadFile($ahkZipUrl, $ahkFolderPath)
+    $ahkExeFilePath = "$ahkFolderPath\AutoHotkey.exe"
+
+    $ahkFileUrl = 'https://raw.githubusercontent.com/craiglandis/ps/master/ahk.ahk'
+    $ahkFileName = $ahkFileUrl.Split('/')[-1]
+    $ahkFilePath = "$myFolderPath\$ahkFileName"
+    $ahkNotElevatedFileUrl = 'https://raw.githubusercontent.com/craiglandis/ps/master/ahk_not_elevated.ahk'
+    $ahkNotElevatedFileName = $ahkNotElevatedFileUrl.Split('/')[-1]
+    $ahkNotElevatedFilePath = "$myFolderPath\$ahkNotElevatedFileName"
+
+    $ahkFilePath = ''
+    Copy-Item -Path \\tsclient\c\onedrive\ahk\AutoHotkey.ahk -Destination c:\my\ahk\AutoHotkeyU64.ahk
+
+    $ahkZipFileName =
+    $ahkZipFilePath = "$env:userprofile\downloads"
+
+    (New-Object System.Net.WebClient).DownloadFile($nppSettingsZipUrl, $nppSettingsZipFilePath)
+
+    # autohotkey.portable - couldn't find a way to specify a patch for this package
+    # (portable? https://www.autohotkey.com/download/ahk.zip)
+
+    # https://www.thenickmay.com/how-to-install-autohotkey-even-without-administrator-access/
+    # It works - the .ahk file must be named AutoHotkeyU64.ahk, then you run AutoHotkeyU64.exe
+    # copy-item -Path \\tsclient\c\onedrive\ahk\AutoHotkey.ahk -Destination c:\my\ahk\AutoHotkeyU64.ahk
+
+    $scriptDuration = '{0:hh}:{0:mm}:{0:ss}.{0:ff}' -f (New-TimeSpan -Start $scriptStartTime -End (Get-Date))
+    Write-PSFMessage "$scriptName duration: $scriptDuration"
+
+    $psFrameworkLogPath = Get-PSFConfigValue -FullName PSFramework.Logging.FileSystem.LogPath
+    $psFrameworkLogFile = Get-ChildItem -Path $psFrameworkLogPath | Sort-Object LastWriteTime -desc | Select-Object -First 1
+    $psFrameworkLogFilePath = $psFrameworkLogFile.FullName
+    Copy-Item -Path $psFrameworkLogFilePath -Destination "$env:USERPROFILE\Desktop"
+    Copy-Item -Path "$env:ProgramData\chocolatey\logs\chocolatey.log" -Destination "$env:USERPROFILE\Desktop"
+
+    Invoke-ExpressionWithLogging -command 'Restart-Computer -Force'
+    #$command = "Restart-Computer -Force"
+    #Write-PSFMessage $command
+    #Invoke-Expression -Command $command
 }
-
-Invoke-Expression ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))
-
-# Disable Server Manager from starting at Windows startup
-reg add 'HKCU\SOFTWARE\Microsoft\ServerManager' /v DoNotOpenServerManagerAtLogon /t REG_DWORD /d 1 /f
-reg add 'HKCU\SOFTWARE\Microsoft\ServerManager' /v DoNotPopWACConsoleAtSMLaunch /t REG_DWORD /d 1 /f
-# Enable "Always show all icons in the notification area"
-reg add 'HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer' /v EnableAutoTray /t REG_DWORD /d 0 /f
-# Show hidden files and folders
-reg add 'HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced' /v Hidden /t REG_DWORD /d 1 /f
-# Show file extensions
-reg add 'HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced' /v HideFileExt /t REG_DWORD /d 0 /f
-
-# Get the name of the builtin local adminstrator account
-$admin = Get-LocalUser | Where-Object {$_.Enabled -and $_.SID.ToString().Endswith('-500')} | Select-Object -First 1
-$adminName = $admin.Name
-# Associate AutoHotkey .AHK extension with VSCode for editing
-# VSCode location if installed as user
-# $value = '\"C:\Users\' + $adminName + '\AppData\Local\Programs\Microsoft VS Code\Code.exe\" \"%1\'
-# VSCode location if installed by chocolatey
-$value = '\"C:\Program Files\Microsoft VS Code\Code.exe\" \"%1\'
-New-ItemProperty -LiteralPath 'HKLM:\SOFTWARE\Classes\AutoHotkeyScript\Shell\Edit\Command' -Name '(default)' -Value $value -PropertyType String -Force -ErrorAction SilentlyContinue
-
-<# https://docs.chocolatey.org/en-us/faqs#what-is-the-difference-between-packages-no-suffix-as-compared-to.install.portable
-What is the difference between packages named *.install (i. e. autohotkey.install), *.portable (i. e. autohotkey.portable) and * (i. e. autohotkey)?
-tl;dr: Nearly 100% of the time, the package with no suffix (autohotkey in this example) is going to ensure the *.install.
-Still not sure why you would call the .install version specifically.
-#>
-
-choco install 7zip.install -y
-choco install autohotkey -y # \\tsclient\c\OneDrive\My\Import-ScheduledTasks.ps1
-#choco install az.powershell -y
-choco install azcopy10 -y
-choco install azure-cli -y
-choco install beyondcompare -y
-choco install cpu-z.install -y
-choco install crystaldiskmark -y
-choco install everything -y
-choco install fiddler -y
-choco install gpu-z -y
-choco install graphviz -y
-choco install greenshot -y
-choco install microsoft-edge -y
-choco install microsoft-windows-terminal -y # not supported on Server SKUs
-choco install microsoftazurestorageexplorer -y
-choco install notepadplusplus.install -y
-choco install powershell-core -y
-choco install putty.portable -y
-choco install screentogif -y
-choco install vscode.install -y
-choco install winscp.portable -y
-choco install wireshark -y
-choco install wiztree -y
-
-Update-Help -Force -ErrorAction SilentlyContinue
-
-<#
-# https://docs.chocolatey.org/en-us/faqs#what-is-the-difference-between-packages-no-suffix-as-compared-to.install.portable
-choco install autohotkey.portable -y
-choco install autohotkey -y
-choco install dotnetcore-runtime -y
-choco install dotnetfx -y # .NET Framework 4.8
-choco install etcher -y
-choco install rufus.portable -y
-choco install git.install -y
-choco install googlechrome -y
-choco install graphviz -y
-choco install imagemagick.app -y
-choco install iperf3 -y
-choco install lessmsi -y
-choco install microsoft-windows-terminal -y
-choco install nircmd -y
-choco install nmap -y
-choco install postman -y
-choco install powerbi -y
-choco install powershell -y # WMF+PS5.1
-choco install powertoys -y
-choco install pswindowsupdate -y
-choco install python3 -y
-choco install speccy -y
-choco install tightvnc -y
-choco install treesizefree -y
-choco install vscode -y
-choco install windbg -y
-choco install windirstat -y
-
-#Chocolatey install of sysinternals is slow, will download zip instead
-choco install sysinternals -y
-cuninst sysinternals -y
-
-$exeUri = 'https://download.microsoft.com/download/B/E/1/BE1F235A-836D-42AC-9BC1-8F04C9DA7E9D/vc_uwpdesktop.140.exe'
-$exeName = $exeUri.Split('/')[-1]
-Invoke-WebRequest -Uri $exeUri -OutFile $exeName
-Start-Process -FilePath $exeName -ArgumentList '/install /quiet /norestart' -Wait
-#https://github.com/microsoft/terminal/releases/download/v1.5.3142.0/Microsoft.WindowsTerminalPreview_1.5.3142.0_8wekyb3d8bbwe.msixbundle
-$packageUri = 'https://github.com/microsoft/winget-cli/releases/download/v0.1.42241-preview/Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.appxbundle'
-$packageName = $packageUri.Split('/')[-1]
-Invoke-WebRequest -Uri $packageUri -OutFile $packageName
-Add-AppxPackage -Path $packageName
-
-choco install chocolatey-core.extension
-
-#Adding winget equivalents as I come across them. For now winget is only supported on Windows client
-Browse on https://winstall.app/ (3rd-party site not maintined by Microsoft)
-"winget search <blah>" to search
-
-Install-Module PSWindowsUpdate
-Add-WUServiceManager -MicrosoftUpdate
-Install-WindowsUpdate -MicrosoftUpdate -AcceptAll -AutoReboot
-
---source msstore requires first enabling that experimental feature (this may not be needed anymore?)
-run "winget settings" to open settings.json, and add -
-
-    "experimentalFeatures": {
-        "experimentalMSStore": true
-    }
-
-winget search 7zip.7zip.Alpha.exe --accept-source-agreements
-
-
-=============================================================================================================================================
-BOTH VM AND PC
-=============================================================================================================================================
-
-winget install --id $id --exact --silent --accept-package-agreements --accept-source-agreements
-
-7zip.7zip.Alpha.exe
-AntibodySoftware.WizTree
-Git.Git
-Greenshot.Greenshot
-Lexikos.AutoHotkey
-Microsoft.AzureCLI
-Microsoft.AzureStorageExplorer
-Microsoft.Edge
-Microsoft.PowerShell
-Microsoft.VisualStudioCode
-Microsoft.WinDbg
-Microsoft.WindowsAdminCenter
-Microsoft.WindowsTerminal
-Microsoft.WindowsTerminal
-Microsoft.WindowsTerminalPreview
-NickeManarin.ScreenToGif
-Notepad++.Notepad++
-ScooterSoftware.BeyondCompare4
-WinSCP.WinSCP
-voidtools.Everything
-
-=============================================================================================================================================
-VM ONLY
-=============================================================================================================================================
-# https://www.telerik.com/blogs/from-fiddler-classic-to-fiddler-everywhere
-Telerik.Fiddler
-# Telerik.FiddlerEverywhere
-WiresharkFoundation.Wireshark
-
-=============================================================================================================================================
-PC ONLY
-=============================================================================================================================================
-
-Apple.iTunes
-Audacity.Audacity
-CPUID.CPU-Z
-CPUID.HWMonitor
-CrystalDewWorld.CrystalDiskMark
-Discord.Discord
-ElectronicArts.EADesktop
-EpicGames.EpicGamesLauncher
-FinalWire.AIDA64Engineer
-Graphviz.Graphviz
-JGraph.Draw
-Microsoft.Bicep
-Microsoft.PowerShell-Preview
-Microsoft.PowerToys
-Microsoft.WindowsTerminalPreview
-Nvidia.GeForceExperience
-PythonSoftwareFoundation.Python.3.9
-Rufus.Rufus
-TechPowerUp.GPU-Z
-Ubisoft.Connect
-Valve.Steam
-Win32diskimager.win32diskimager
-Zoom.Zoom
-
-
-=============================================================================================================================================
-NOT SURE, NEED TO RESEARCH
-=============================================================================================================================================
-winget install Microsoft.dotNetFramework --exact --silent
-
-
-
-
-# Not sure if this needs to have WSL installed first?
-# winget install Canonical.Ubuntu --exact --silent
-
-
-winget install Microsoft.Whiteboard --exact --silent --source msstore
-winget install Microsoft.WinDbg --exact --silent --source msstore
-winget install Microsoft.WindowsTerminal --exact --silent --source msstore
-winget install Microsoft.WindowsTerminalPreview --exact --silent --source msstore
-winget install PythonSoftwareFoundation.Python.3.9 --exact --silent --source msstore
-
-
-winget install 1password --exact --silent
-winget install 7zip.7zip --exact --silent
-winget install 7zip.7zipAlpha --exact --silent
-winget install AgileBits.1Password --exact --silent
-winget install alcpu.CoreTemp --exact --silent
-winget install AntibodySoftware.WizTree --exact --silent
-winget install Apple.iTunes --exact --silent
-winget install AshleyStone.DefaultAudio --exact --silent
-winget install Audacity.Audacity --exact --silent
-winget install Balena.Etcher --exact --silent
-winget install Blizzard.BattleNet --exact --silent
-winget install BraveSoftware.BraveBrowser --exact --silent
-winget install Canonical.Ubuntu --exact --silent
-winget install CPUID.CPU-Z --exact --silent
-winget install CPUID.HWMonitor --exact --silent
-winget install CrystalDewWorld.CrystalDiskMark --exact --silent
-winget install Discord.Discord --exact --silent
-winget install Docker.DockerDesktop --exact --silent
-winget install ElectronicArts.EADesktop --exact --silent
-winget install EpicGames.EpicGamesLauncher --exact --silent
-winget install FinalWire.AIDA64Engineer --exact --silent
-winget install Git.Git --exact --silent
-winget install GitHub.cli --exact --silent
-winget install GitHub.GitHubDesktop --exact --silent
-winget install GitHub.GitLFS --exact --silent
-winget install GoLang.Go --exact --silent
-winget install Google.Chrome --exact --silent
-winget install Graphviz.Graphviz --exact --silent
-winget install Greenshot.Greenshot --exact --silent
-winget install HandBrake.HandBrake --exact --silent
-winget install ImageMagick.ImageMagick --exact --silent
-winget install JGraph.Draw --exact --silent
-winget install Lenovo.SystemUpdate --exact --silent
-winget install Lexikos.AutoHotkey --exact --silent
-winget install Microsoft.AzureCLI --exact --silent
-winget install Microsoft.AzureDataStudio --exact --silent
-winget install Microsoft.AzureStorageExplorer --exact --silent
-winget install Microsoft.Bicep --exact --silent
-winget install Microsoft.dotNetFramework --exact --silent
-winget install Microsoft.Edge --exact --silent
-winget install Microsoft.Git --exact --silent
-winget install Microsoft.MsGraphCLI --exact --silent
-winget install Microsoft.NuGet --exact --silent
-winget install Microsoft.Office --exact --silent
-winget install Microsoft.OneDrive --exact --silent
-winget install Microsoft.PowerBI --exact --silent
-winget install Microsoft.PowerShell --exact --silent
-winget install Microsoft.PowerShell-Preview --exact --silent
-winget install Microsoft.PowerToys --exact --silent
-winget install Microsoft.RemoteDesktopClient --exact --silent
-winget install Microsoft.SQLServerManagementStudio --exact --silent
-winget install Microsoft.Teams --exact --silent
-winget install Microsoft.VisualStudio.Enterprise --exact --silent
-winget install Microsoft.VisualStudioCode --exact --silent
-winget install Microsoft.webview2-evergreen --exact --silent
-winget install Microsoft.WindowsAdminCenter --exact --silent
-winget install Microsoft.WindowsTerminal --exact --silent
-winget install Microsoft.WindowsTerminalPreview --exact --silent
-winget install Microsoft.WindowsWDK --exact --silent
-winget install Mozilla.Firefox --exact --silent
-winget install NickeManarin.ScreenToGif --exact --silent
-winget install Notepad++.Notepad++ --exact --silent
-winget install Nvidia.GeForceExperience --exact --silent
-winget install Obsidian.Obsidian --exact --silent
-winget install OBSProject.OBSStudio --exact --silent
-winget install PrimateLabs.Geekbench --exact --silent
-winget install Python.Python.3 --exact --silent
-#winget install Python.Python.2 --exact --silent
-winget install Rufus.Rufus --exact --silent
-winget install ScooterSoftware.BeyondCompare4 --exact --silent
-winget install SpeedCrunch.SpeedCrunch --exact --silent
-winget install Spotify.Spotify --exact --silent
-winget install TechPowerUp.GPU-Z --exact --silent
-winget install Telerik.Fiddler --exact --silent
-winget install Telerik.FiddlerEverywhere --exact --silent
-winget install twitch.twitch --exact --silent
-winget install TypeFaster.TypeFaster --exact --silent
-winget install Ubisoft.Uplay --exact --silent
-winget install Valve.Steam --exact --silent
-winget install VideoLAN.VLC --exact --silent
-winget install voidtools.Everything --exact --silent
-winget install Win32diskimager.win32diskimager --exact --silent
-winget install WinSCP.WinSCP --exact --silent
-winget install WiresharkFoundation.Wireshark --exact --silent
-winget install Zoom.Zoom --exact --silent
-
-Script to install winget itself -
-https://github.com/al-cheb/winget_install_script/blob/main/Install-WinGet.ps1
-
-# Install NtObjectManager module
-Install-Module NtObjectManager -Force
-
-# Install winget
-$vclibs = Invoke-WebRequest -Uri "https://store.rg-adguard.net/api/GetFiles" -Method "POST" -ContentType "application/x-www-form-urlencoded" -Body "type=PackageFamilyName&url=Microsoft.VCLibs.140.00_8wekyb3d8bbwe&ring=RP&lang=en-US" -UseBasicParsing | Foreach-Object Links | Where-Object outerHTML -match "Microsoft.VCLibs.140.00_.+_x64__8wekyb3d8bbwe.appx" | Foreach-Object href
-$vclibsuwp = Invoke-WebRequest -Uri "https://store.rg-adguard.net/api/GetFiles" -Method "POST" -ContentType "application/x-www-form-urlencoded" -Body "type=PackageFamilyName&url=Microsoft.VCLibs.140.00.UWPDesktop_8wekyb3d8bbwe&ring=RP&lang=en-US" -UseBasicParsing | Foreach-Object Links | Where-Object outerHTML -match "Microsoft.VCLibs.140.00.UWPDesktop_.+_x64__8wekyb3d8bbwe.appx" | Foreach-Object href
-
-Invoke-WebRequest $vclibsuwp -OutFile Microsoft.VCLibs.140.00.UWPDesktop_8wekyb3d8bbwe.appx
-Invoke-WebRequest $vclibs -OutFile Microsoft.VCLibs.140.00_8wekyb3d8bbwe.appx
-
-Add-AppxPackage -Path .\Microsoft.VCLibs.140.00.UWPDesktop_8wekyb3d8bbwe.appx
-Add-AppxPackage -Path .\Microsoft.VCLibs.140.00_8wekyb3d8bbwe.appx
-
-Invoke-WebRequest https://github.com/microsoft/winget-cli/releases/download/v1.0.11451/Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.appxbundle -OutFile Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.appxbundle
-Add-AppxPackage -Path .\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.appxbundle
-
-# Create reparse point
-$installationPath = (Get-AppxPackage Microsoft.DesktopAppInstaller).InstallLocation
-Set-ExecutionAlias -Path "C:\Windows\System32\winget.exe" -PackageName "Microsoft.DesktopAppInstaller_8wekyb3d8bbwe" -EntryPoint "Microsoft.DesktopAppInstaller_8wekyb3d8bbwe!winget" -Target "$installationPath\AppInstallerCLI.exe" -AppType Desktop -Version 3
-explorer.exe "shell:appsFolder\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe!winget"
-
-And another one:
-https://github.com/AdrianoCahete/winget-installer/blob/master/Install.ps1
-Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://raw.githubusercontent.com/AdrianoCahete/winget-installer/master/Install.ps1'))
-
-# To automate installing available updates and reboot if needed:
-Install-Module PSWindowsUpdate
-Add-WUServiceManager -MicrosoftUpdate
-Install-WindowsUpdate -MicrosoftUpdate -AcceptAll -AutoReboot
-
-#>
