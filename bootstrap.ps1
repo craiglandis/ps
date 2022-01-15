@@ -25,7 +25,12 @@ DynamicParam
     $ParameterAttribute.Mandatory = $false
     $ParameterAttribute.Position = 1
     $AttributeCollection.Add($ParameterAttribute)
-    #TODO: Make this download apps.json from github
+    $appsJsonFilePath = "$PSScriptRoot\apps.json"
+    if (!(Test-Path -Path $appsJsonFilePath -PathType Leaf))
+    {
+        $appsJsonFileUrl = 'https://raw.githubusercontent.com/craiglandis/ps/master/apps.json'
+        (New-Object Net.Webclient).DownloadFile($appsJsonFileUrl, $appsJsonFilePath)
+    }
     $arrSet = (Get-Content -Path $PSScriptRoot\apps.json | ConvertFrom-Json).Name
     $ValidateSetAttribute = New-Object System.Management.Automation.ValidateSetAttribute($arrSet)
     $AttributeCollection.Add($ValidateSetAttribute)
@@ -56,7 +61,13 @@ process
     $PSDefaultParameterValues['Write-PSFMessage:Level'] = 'Output'
     [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
 
-    $apps = Get-Content -Path $PSScriptRoot\apps.json | ConvertFrom-Json
+    $appsJsonFilePath = "$PSScriptRoot\apps.json"
+    if (!(Test-Path -Path $appsJsonFilePath -PathType Leaf))
+    {
+        $appsJsonFileUrl = 'https://raw.githubusercontent.com/craiglandis/ps/master/apps.json'
+        (New-Object Net.Webclient).DownloadFile($appsJsonFileUrl, $appsJsonFilePath)
+    }
+    $apps = Get-Content -Path $appsJsonFilePath | ConvertFrom-Json
 
     if ($show)
     {
