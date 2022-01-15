@@ -203,6 +203,8 @@
     "ChocolateyName": "googlechrome",
     "WingetName": "Google.Chrome",
     "Groups": [
+      "PC",
+      "VM"
     ]
   },
   {
@@ -288,10 +290,9 @@
     "ChocolateyName": "microsoft-edge",
     "WingetName": "Microsoft.Edge",
     "Groups": [
-      "PC",
-      "VM",
-      "VSAW"
-    ]
+    ],
+    "Notes": "Since Chrome installs on Win7+ but Edge does not, just install Chrome on all Windows versions"
+
   },
   {
     "Name": "Microsoft Teams",
@@ -433,8 +434,7 @@
     "WingetName": "Microsoft.VisualStudioCode",
     "Groups": [
       "PC",
-      "VM",
-      "VSAW"
+      "VM"
     ]
   },
   {
@@ -481,13 +481,14 @@
   },
   {
     "Name": "Windows Terminal",
-    "ChocolateyName": "microsoft-windows-terminal",
+    "ChocolateyName": "",
     "WingetName": "9N0DX20HK701",
     "Groups": [
       "PC",
       "VM",
       "VSAW"
-    ]
+    ],
+    "Notes": "Note supported on Windows Server SKUs, though may work on WS22 by install the msixbundle. Chocolatey package is microsoft-windows-terminal but leaving it blank so winget installs both terminal and terminal preview"
   },
   {
     "Name": "Windows Terminal Preview",
@@ -495,7 +496,8 @@
     "WingetName": "9N8G5RFZ9XK3",
     "Groups": [
       "PC"
-    ]
+    ],
+    "Notes": "Note supported on Windows Server SKUs, though may work on WS22 by install the msixbundle"
   },
   {
     "Name": "WinSCP",
