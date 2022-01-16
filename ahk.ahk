@@ -31,6 +31,17 @@ Else
 }
 Return
 
++^N:: ; *** CTRL+SHIFT+N for Notepad++ ***
+IfWinExist Notepad++
+{
+    WinActivate
+}
+Else
+{
+    Run Notepad++
+}
+Return
+
 +^R:: ; *** CTRL+SHIFT+R to reload AHK file***
 Run, c:\onedrive\my\ahk.ahk, , Hide
 Return
