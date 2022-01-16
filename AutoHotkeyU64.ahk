@@ -30,6 +30,17 @@ Else
 }
 Return
 
++^N:: ; *** CTRL+SHIFT+N for Notepad++ ***
+IfWinExist Notepad++
+{
+    WinActivate
+}
+Else
+{
+    Run Notepad++
+}
+Return
+
 ^+E:: ; *** CTRL+SHIFT+E for Edge ***
 If WinExist("ahk_exe msedge.exe")
 {
