@@ -1,3 +1,11 @@
+<#
+TODO:
+
+Additional shell customizations
+Install KE https://aka.ms/ke
+Import KE connections
+Install Visio
+
 # wmic path Win32_TerminalServiceSetting where AllowTSConnections="0" call SetAllowTSConnections "1"
 # reg add "HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Terminal Server" /v fDenyTSConnections /t REG_DWORD /d 0 /f
 # netsh advfirewall firewall set rule group="remote desktop" new enable=Yes
@@ -7,11 +15,12 @@
 # (New-Object System.Net.WebClient).DownloadFile('https://aka.ms/bootstrap','c:\my\bootstrap.ps1'); iex 'c:\my\bootstrap.ps1 -sysinternals'
 # Run from RDP client
 # Set-ExecutionPolicy -ExecutionPolicy Unrestricted -Force; Invoke-Expression ((New-Object Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))
-# Set-ExecutionPolicy -ExecutionPolicy Unrestricted -Force; \\tsclient\c\onedrive\my\bootstrap.ps1 -group All
+# Set-ExecutionPolicy -ExecutionPolicy Unrestricted -Force; \\tsclient\c\onedrive\my\bootstrap.ps1 -group VM
+#>
 [CmdletBinding()]
 param(
     [ValidateSet('PC', 'VM', 'VSAW', 'All')]
-    [string]$group = 'PC',
+    [string]$group,
     [switch]$show,
     [string]$toolsPath = 'C:\OneDrive\Tools',
     [string]$myPath = 'C:\OneDrive\My'
@@ -31,8 +40,9 @@ DynamicParam
         $appsJsonFileUrl = 'https://raw.githubusercontent.com/craiglandis/ps/master/apps.json'
         (New-Object Net.Webclient).DownloadFile($appsJsonFileUrl, $appsJsonFilePath)
     }
-    $arrSet = (Get-Content -Path $PSScriptRoot\apps.json | ConvertFrom-Json).Name
-    $ValidateSetAttribute = New-Object System.Management.Automation.ValidateSetAttribute($arrSet)
+    $apps = Get-Content -Path $PSScriptRoot\apps.json | ConvertFrom-Json
+    $appNames = $apps.Name
+    $ValidateSetAttribute = New-Object System.Management.Automation.ValidateSetAttribute($appNames)
     $AttributeCollection.Add($ValidateSetAttribute)
     $RuntimeParameter = New-Object System.Management.Automation.RuntimeDefinedParameter($ParameterName, [string], $AttributeCollection)
     $RuntimeParameterDictionary.Add($ParameterName, $RuntimeParameter)
@@ -55,16 +65,24 @@ process
 
     $scriptStartTime = Get-Date
     $scriptName = Split-Path -Path $PSCommandPath -Leaf
-    $scriptBaseName = $scriptName.TrimEnd('ps1')
     # Alias Write-PSFMessage to Write-PSFMessage until confirming PSFramework module is installed
     Set-Alias -Name Write-PSFMessage -Value Write-Output
     $PSDefaultParameterValues['Write-PSFMessage:Level'] = 'Output'
-    [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
+    if ($PSVersionTable.PSVersion -ge [Version]'5.1')
+    {
+        [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
+       <# 2008R2/Win7 don't support TLS1.2 until PS5.1/WMF are installed, before then this will result in error:
+        PS C:\> [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
+        Exception setting "SecurityProtocol": "Cannot convert value "3312" to type "System.Net.SecurityProtocolType" due to invalid enumeration values. Specify one of the following enumeration values and try again. The possible enumeration values are "Ssl3, Tls"."
+        #>
+    }
 
+    Invoke-ExpressionWithLogging -command "schtasks /delete /tn bootstrap /f"
+
+    $appsJsonFileUrl = 'https://raw.githubusercontent.com/craiglandis/ps/master/apps.json'
     $appsJsonFilePath = "$PSScriptRoot\apps.json"
     if (!(Test-Path -Path $appsJsonFilePath -PathType Leaf))
     {
-        $appsJsonFileUrl = 'https://raw.githubusercontent.com/craiglandis/ps/master/apps.json'
         (New-Object Net.Webclient).DownloadFile($appsJsonFileUrl, $appsJsonFilePath)
     }
     $apps = Get-Content -Path $appsJsonFilePath | ConvertFrom-Json
@@ -72,11 +90,14 @@ process
     if ($show)
     {
         $apps = $apps | Where-Object {$_.Groups -contains $group}
+        $appCount = ($apps | Measure-Object).Count
+        Write-PSFMessage "`nGroup: $group, Count: $appCount"
         Write-PSFMessage $apps
         exit
     }
 
-    $win32_OperatingSystem = Get-CimInstance -ClassName Win32_OperatingSystem
+    #$win32_OperatingSystem = Get-CimInstance -ClassName Win32_OperatingSystem
+    $win32_OperatingSystem = Get-WmiObject -Class Win32_OperatingSystem
     $productType = $win32_OperatingSystem.ProductType
     $osVersion = ($win32_OperatingSystem | Select-Object @{Label = 'OSVersion'; Expression = {"$($_.Caption) $($_.Version)"}}).OSVersion
 
@@ -114,9 +135,67 @@ process
 
     Write-PSFMessage "OS: $os ($osVersion)"
     Invoke-ExpressionWithLogging -command 'Set-ExecutionPolicy -ExecutionPolicy Unrestricted -Force'
-    #$command = 'Set-ExecutionPolicy -ExecutionPolicy Unrestricted -Force'
-    #Write-PSFMessage $command
-    #Invoke-Expression -Command $command
+
+    $ErrorActionPreference = 'SilentlyContinue'
+    $chocoVersion = choco -v
+    $ErrorActionPreference = 'Continue'
+
+    if ($chocoVersion)
+    {
+        Write-PSFMessage "Chocolatey $chocoVersion already installed"
+    }
+    else
+    {
+        # Chocolatey install requires at least PS3. Clean install of 2008R2/Win7 only have PS2, so need to manually get PS5.1 installed on those
+        if ($PSVersionTable.PSVersion -lt [Version]'3.0')
+        {
+            $installWmfScriptUrl = 'https://raw.githubusercontent.com/craiglandis/ps/master/install-wmf.ps1'
+            $installWmfScriptFilePath = "$env:TEMP\$($installWmfScriptUrl.Split('/')[-1])"
+            (New-Object System.Net.WebClient).DownloadFile($installWmfScriptUrl, $installWmfScriptFilePath)
+            Invoke-ExpressionWithLogging -command $installWmfScriptFilePath
+            # The install WMF script will issue a retart on its own
+            exit
+        }
+        else
+        {
+            Invoke-ExpressionWithLogging -command "Invoke-Expression ((New-Object Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))"
+
+            $ErrorActionPreference = 'SilentlyContinue'
+            $chocoVersion = choco -v
+            $ErrorActionPreference = 'Continue'
+            if ($chocoVersion)
+            {
+                Write-PSFMessage "Chocolatey $chocoVersion already installed"
+            }
+            else
+            {
+                Write-PSFMessage 'Chocolatey failed to install'
+                exit
+            }
+        }
+    }
+
+    if ($chocoVersion)
+    {
+        Write-PSFMessage "Chocolatey $chocoVersion successfully installed"
+    }
+    else
+    {
+        Write-PSFMessage 'Chocolatey install failed'
+        exit
+    }
+
+    # 14393+ definitely have PS5.1, 10240 and 10586 may not, but nobody uses those early days Win10 builds anymore anyway.
+    # The chocolatey package checks if PowerShell 5.1 is installed, if so, it does not try to install it
+    Invoke-ExpressionWithLogging -command "choco install powershell -y"
+    if ($LASTEXITCODE -eq 3010)
+    {
+        Write-PSFMessage "Creating onstart scheduled task to run script again at startup"
+        $scriptPath = "$env:SystemRoot\Temp\$scriptName"
+        Invoke-ExpressionWithLogging -command "Copy-Item -Path $PSCommandPath -Destination $scriptPath"
+        Invoke-ExpressionWithLogging -command "schtasks /create /tn bootstrap /sc onstart /delay 0000:30 /rl highest /ru system /tr `"powershell.exe -executionpolicy bypass -file $scriptPath`" /f"
+        Invoke-ExpressionWithLogging -command "Restart-Computer -Force"
+    }
 
     # This needs to be before Set-PSRepository, otherwise Set-PSRepository will prompt to install it
     if ($PSEdition -eq 'Desktop')
@@ -126,21 +205,12 @@ process
         if (!$nuget -or $nuget.Version -lt [Version]'2.8.5.201')
         {
             Invoke-ExpressionWithLogging -command 'Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force'
-            #Write-PSFMessage 'Installing Nuget 2.8.5.201+'
-            #Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force
         }
         else
         {
             Write-PSFMessage "Nuget $($nuget.Version) already installed"
         }
     }
-
-    #Register-PSRepository -Name PSGallery –SourceLocation 'https://www.powershellgallery.com/api/v2' -InstallationPolicy Trusted
-    # Is this really necessary???
-    # Invoke-ExpressionWithLogging -command 'Set-PSRepository -Name PSGallery -InstallationPolicy Trusted'
-    #$command = 'Set-PSRepository -Name PSGallery -InstallationPolicy Trusted'
-    #Write-PSFMessage $command
-    #Invoke-Expression -Command $command
 
     # https://psframework.org/
     Import-Module -Name PSFramework -ErrorAction SilentlyContinue
@@ -160,15 +230,6 @@ process
     if ($psframework)
     {
         Remove-Item Alias:Write-PSFMessage -Force -ErrorAction SilentlyContinue
-        <#
-        $paramSetPSFLoggingProvider = @{
-            Name         = 'logfile'
-            InstanceName = $scriptBaseName
-            FilePath     = "$env:USERPROFILE\Desktop\$($scriptBaseName)_$(Get-Date -f yyyyMMddHHmmss)"
-            Enabled      = $true
-        }
-        Set-PSFLoggingProvider @paramSetPSFLoggingProvider
-        #>
         Write-PSFMessage "PSFramework module $($psframework.Version)"
     }
 
@@ -180,9 +241,6 @@ process
     else
     {
         Invoke-ExpressionWithLogging -command "New-Item -Path $profileFile -Type File -Force | Out-Null"
-        #$command = "New-Item -Path $profileFile -Type File -Force | Out-Null"
-        #Write-PSFMessage $command
-        #Invoke-Expression -Command $command
     }
 
     $ErrorActionPreference = 'SilentlyContinue'
@@ -195,11 +253,7 @@ process
     }
     else
     {
-        #Write-PSFMessage "Installing Chocolatey"
         Invoke-ExpressionWithLogging -command "Invoke-Expression ((New-Object Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))"
-        #$command = "Invoke-Expression ((New-Object Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))"
-        #Write-PSFMessage $command
-        #Invoke-Expression -Command $command
         $ErrorActionPreference = 'SilentlyContinue'
         $chocoVersion = choco -v
         $ErrorActionPreference = 'Continue'
@@ -224,16 +278,58 @@ process
         exit
     }
 
+    if ($isWin11 -or $isWin10)
+    {
+        # Install winget since it is not installed by default. It is supported on Win10/Win11 but not WS22 although you can get it working on WS22
+        # Preview version didn't work, said it needed Microsoft.UI.Xaml 2.7.0 even after I installed Microsoft.UI.Xaml 2.7.0
+        # $wingetAppXPackageUrl = 'https://github.com/microsoft/winget-cli/releases/download/v1.2.3411-preview/Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle'
+        $vcLibsUrl = 'https://aka.ms/Microsoft.VCLibs.x64.14.00.Desktop.appx'
+        $vcLibsFileName = $vcLibsUrl.Split('/')[-1]
+        $vcLibsFilePath = "$env:TEMP\$vcLibsFileName"
+        (New-Object System.Net.WebClient).DownloadFile($vcLibsUrl, $vcLibsFilePath)
+        if (Test-Path -Path $vcLibsFilePath -PathType Leaf)
+        {
+            Invoke-ExpressionWithLogging -command "Add-AppPackage -Path $vcLibsFilePath"
+        }
+
+        $wingetAppXPackageUrl = 'https://github.com/microsoft/winget-cli/releases/download/v1.1.12653/Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle'
+        $wingetAppXPackageFileName = $wingetAppXPackageUrl.Split('/')[-1]
+        $wingetAppXPackageFilePath = "$env:TEMP\$wingetAppXPackageFileName"
+        (New-Object System.Net.WebClient).DownloadFile($wingetAppXPackageUrl, $wingetAppXPackageFilePath)
+
+        if (Test-Path -Path $wingetAppXPackageFilePath -PathType Leaf)
+        {
+            Invoke-ExpressionWithLogging -command "Add-AppPackage -Path $wingetAppXPackageFilePath"
+        }
+
+        <#
+        winget install --id Microsoft.Office --exact --silent --accept-package-agreements --accept-source-agreements
+        Install-Package Microsoft.UI.Xaml -Version 2.7.1-prerelease.211026002
+
+        # didn't need the license file but keeping it here just in case
+        # $wingetAppXPackageLicenseUrl = 'https://github.com/microsoft/winget-cli/releases/download/v1.1.12653/9c0fe2ce7f8e410eb4a8f417de74517e_License1.xml'
+        # $wingetAppXPackageLicenseFileName = $wingetAppXPackageLicenseUrl.Split('/')[-1]
+        # $wingetAppXPackageLicenseFilePath = "$env:TEMP\$wingetAppXPackageLicenseFileName"
+        # (New-Object System.Net.WebClient).DownloadFile($wingetAppXPackageLicenseUrl, $wingetAppXPackageLicenseFilePath)
+        #if ((Test-Path -Path $wingetAppXPackageFilePath -PathType Leaf) -and (Test-Path -Path $wingetAppXPackageLicenseFilePath -PathType Leaf))
+        #{
+        #    Invoke-ExpressionWithLogging -command "Add-AppxProvisionedPackage -Online -PackagePath $wingetAppXPackageFilePath -LicensePath $wingetAppXPackageLicenseFilePath"
+        #}
+
+        #Register-PackageSource -provider NuGet -name nugetRepository -location https://www.nuget.org/api/v2
+        #Install-Package Microsoft.UI.Xaml -Force
+        # Install-Package Microsoft.VCLibs.140.00.UWPDesktop -Force
+        #Get-Package Microsoft.UI.Xaml
+        #>
+    }
+
     if ($group -ne 'All')
     {
-        $apps | Where-Object {$_.Groups -contains $group}
+        $apps = $apps | Where-Object {$_.Groups -contains $group}
     }
 
     Write-PSFMessage "Mode: $group"
     Write-PSFMessage "$($apps.Count) apps to be installed"
-
-    #$apps | Where-Object {$_.Name -in '7-Zip','AutoHotkey', 'Sysinternals Suite', '.NET Desktop Runtime 6.0.1', 'Cascadia Font Family', 'Everything', 'Greenshot', 'Microsoft 365 Apps for enterprise', 'Microsoft Edge', 'Microsoft Teams', 'Notepad++', 'PowerShell', 'PowerShell Preview', 'Steam', 'Visual Studio Code', 'Windows Terminal', 'Windows Terminal Preview'} | ForEach-Object {
-    #$apps | Where-Object {$_.Name -eq '7-Zip'} | ForEach-Object {
     $apps | ForEach-Object {
 
         $app = $_
@@ -273,15 +369,11 @@ process
                 $command = $command.Replace('MYPATH', $myPath)
             }
             Invoke-ExpressionWithLogging -command $command
-            #Write-PSFMessage $command
-            #Invoke-Expression -Command $command
         }
         elseif ($appName -and !$useChocolatey)
         {
             $command = "winget install --id $appName --exact --silent --accept-package-agreements --accept-source-agreements"
             Invoke-ExpressionWithLogging -command $command
-            #Write-PSFMessage $command
-            #Invoke-Expression -Command $command
         }
     }
 
@@ -297,9 +389,6 @@ process
     else
     {
         Invoke-ExpressionWithLogging -command "New-Item -Path $toolsPath -Type File -Force | Out-Null"
-        #$command = "New-Item -Path $toolsPath -Type File -Force | Out-Null"
-        #Write-PSFMessage $command
-        #Invoke-Expression -Command $command
     }
 
     if (Test-Path -Path $myPath -PathType Container)
@@ -309,18 +398,12 @@ process
     else
     {
         Invoke-ExpressionWithLogging -command "New-Item -Path $myPath -Type Directory -Force | Out-Null"
-        #$command = "New-Item -Path $myPath -Type File -Force | Out-Null"
-        #Write-PSFMessage $command
-        #Invoke-Expression -Command $command
     }
 
     # https://stackoverflow.com/questions/714877/setting-windows-powershell-environment-variables
     Write-PSFMessage "Adding $toolsPath and $myPath to user Path environment variable"
     $newUserPath = "$env:Path;$toolsPath;$myPath"
     Invoke-ExpressionWithLogging -command "[Environment]::SetEnvironmentVariable('Path', '$newUserPath', 'User')"
-    #$command = "[Environment]::SetEnvironmentVariable('Path', '$newUserPath', 'User')"
-    #Write-PSFMessage $command
-    #Invoke-Expression -Command $command
 
     $userPathFromRegistry = (Get-ItemProperty -Path 'HKCU:\Environment' -Name Path).Path
     $separator = "`n$('='*160)`n"
@@ -353,9 +436,6 @@ process
         if (Test-Path -Path $regFileName -PathType Leaf)
         {
             Invoke-ExpressionWithLogging -command "reg import $regFileName"
-            #$command = "reg import $regFileName"
-            #Write-PSFMessage $command
-            #Invoke-Expression -Command $command
         }
     }
 
@@ -379,10 +459,6 @@ process
     {
         Invoke-ExpressionWithLogging -command 'wsl --install'
     }
-    # Configure shell
-    # Kusto Explorer https://aka.ms/ke
-    # Import Kusto connections
-    # Visio
 
     if ($isWindowsServer)
     {
@@ -462,32 +538,11 @@ process
     $esIniFilePath = "$toolsPath\$esIniFileName"
     (New-Object System.Net.WebClient).DownloadFile($esIniUrl, $esIniFilePath)
 
-    if ($group -in 'PC', 'VM')
+    if ($group -eq 'PC' -or $group -eq 'VM')
     {
         # Download some Nirsoft tools into the tools path
         Invoke-ExpressionWithLogging -command "Invoke-Expression ((New-Object Net.WebClient).DownloadString('https://raw.githubusercontent.com/craiglandis/ps/master/Get-NirsoftTools.ps1'))"
     }
-
-    $ahkZipFileUrl = 'https://www.autohotkey.com/download/ahk.zip'
-    $ahkZipFileName = $ahkZipFileUrl.Split('/')[-1]
-    $ahkFolderPath = "$env:userprofile\downloads\$($ahkZipFileName.Replace('.zip',''))"
-    (New-Object System.Net.WebClient).DownloadFile($ahkZipUrl, $ahkFolderPath)
-    $ahkExeFilePath = "$ahkFolderPath\AutoHotkey.exe"
-
-    $ahkFileUrl = 'https://raw.githubusercontent.com/craiglandis/ps/master/ahk.ahk'
-    $ahkFileName = $ahkFileUrl.Split('/')[-1]
-    $ahkFilePath = "$myFolderPath\$ahkFileName"
-    $ahkNotElevatedFileUrl = 'https://raw.githubusercontent.com/craiglandis/ps/master/ahk_not_elevated.ahk'
-    $ahkNotElevatedFileName = $ahkNotElevatedFileUrl.Split('/')[-1]
-    $ahkNotElevatedFilePath = "$myFolderPath\$ahkNotElevatedFileName"
-
-    $ahkFilePath = ''
-    Copy-Item -Path \\tsclient\c\onedrive\ahk\AutoHotkey.ahk -Destination c:\my\ahk\AutoHotkeyU64.ahk
-
-    $ahkZipFileName =
-    $ahkZipFilePath = "$env:userprofile\downloads"
-
-    (New-Object System.Net.WebClient).DownloadFile($nppSettingsZipUrl, $nppSettingsZipFilePath)
 
     # autohotkey.portable - couldn't find a way to specify a patch for this package
     # (portable? https://www.autohotkey.com/download/ahk.zip)
@@ -495,6 +550,35 @@ process
     # https://www.thenickmay.com/how-to-install-autohotkey-even-without-administrator-access/
     # It works - the .ahk file must be named AutoHotkeyU64.ahk, then you run AutoHotkeyU64.exe
     # copy-item -Path \\tsclient\c\onedrive\ahk\AutoHotkey.ahk -Destination c:\my\ahk\AutoHotkeyU64.ahk
+    $vsCodeSystemPath = "$env:ProgramFiles\Microsoft VS Code\Code.exe"
+    $vsCodeUserPath = "$env:LOCALAPPDATA\Programs\Microsoft VS Code\Code.exe"
+    if ((Test-Path -Path $vsCodeSystemPath -PathType Leaf) -or (Test-Path -Path $vsCodeUserPath -PathType Leaf))
+    {
+        $vsCodeSettingsJsonUrl = 'https://raw.githubusercontent.com/craiglandis/ps/master/vscode_settings.json'
+        $vsCodeSettingsJsonPath = "$env:APPDATA\Code\User\settings.json"
+        Write-PSFMessage "Downloading $vsCodeSettingsJsonUrl"
+        (New-Object System.Net.WebClient).DownloadFile($vsCodeSettingsJsonUrl, $vsCodeSettingsJsonPath)
+    }
+    else
+    {
+        Write-PSFMessage "VSCode not installed, skipping download of $vsCodeSettingsJsonUrl"
+    }
+
+    Invoke-ExpressionWithLogging -command "Update-Help -Force -ErrorAction SilentlyContinue"
+    $pwshFilePath = "$env:ProgramFiles\PowerShell\7\pwsh.exe"
+    if (Test-Path -Path $pwshFilePath -PathType Leaf)
+    {
+        Invoke-ExpressionWithLogging -Command "& `'$pwshFilePath`' -NoProfile -NoLogo -Command Update-Help -Force -ErrorAction SilentlyContinue"
+    }
+
+    New-Item -ItemType SymbolicLink -Path "$env:SystemDrive\od" -Target "$env:SystemDrive\OneDrive"
+    New-Item -ItemType SymbolicLink -Path "$env:SystemDrive\my" -Target "$env:SystemDrive\OneDrive\My"
+    New-Item -ItemType SymbolicLink -Path "$env:SystemDrive\bin" -Target "$env:SystemDrive\OneDrive\Tools"
+
+    # To remove the symbolic links (Remove-Item won't do it):
+    #(Get-Item -Path "$env:SystemDrive\od").Delete()
+    #(Get-Item -Path "$env:SystemDrive\my").Delete()
+    #(Get-Item -Path "$env:SystemDrive\bin").Delete()
 
     $scriptDuration = '{0:hh}:{0:mm}:{0:ss}.{0:ff}' -f (New-TimeSpan -Start $scriptStartTime -End (Get-Date))
     Write-PSFMessage "$scriptName duration: $scriptDuration"
@@ -506,7 +590,4 @@ process
     Copy-Item -Path "$env:ProgramData\chocolatey\logs\chocolatey.log" -Destination "$env:USERPROFILE\Desktop"
 
     Invoke-ExpressionWithLogging -command 'Restart-Computer -Force'
-    #$command = "Restart-Computer -Force"
-    #Write-PSFMessage $command
-    #Invoke-Expression -Command $command
 }
