@@ -2,20 +2,57 @@
 
 Menu, TRAY, Icon, C:\Program Files\AutoHotkey\AutoHotkey.exe, 4 ; red "H" icon to denote this script runs elevated
 
-+^P:: ; *** CTRL+SHIFT+P for PowerShell 7 ***
++^P::
+windowsTerminalPreview := "C:\Users\" A_UserName "\AppData\Local\Microsoft\WindowsApps\Microsoft.WindowsTerminalPreview_8wekyb3d8bbwe\wt.exe"
+windowsTerminal := "C:\Users\" A_UserName "\AppData\Local\Microsoft\WindowsApps\wt.exe"
+pwshPreview := "C:\Program Files\PowerShell\7-preview\pwsh.exe"
+pwsh := "C:\Program Files\PowerShell\7\pwsh.exe"
+powershell := "C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"
 SetTitleMatchMode RegEx
 if WinExist("ahk_exe WindowsTerminal.exe")
 {
     WinActivate
 }
-Else
+else if FileExist(windowsTerminalPreview)
 {
-    WindowsTerminalPreview := "C:\Users\" A_UserName "\AppData\Local\Microsoft\WindowsApps\Microsoft.WindowsTerminalPreview_8wekyb3d8bbwe\wt.exe"
-    WindowsTerminal := "C:\Users\" A_UserName "\AppData\Local\Microsoft\WindowsApps\wt.exe"
-    if FileExist(WindowsTerminalPreview)
-        Run, %WindowsTerminalPreview%, , max
-    else if FileExist(WindowsTerminal)
-        Run, %WindowsTerminal%, , max
+    Run, %windowsTerminalPreview%, , max
+}
+else if FileExist(windowsTerminal)
+{
+    Run, %windowsTerminal%, , max
+}
+else if WinExist("ahk_exe pwsh.exe")
+{
+    WinActivate
+}
+else if FileExist(pwshPreview)
+{    
+    Run %pwshPreview% -NoLogo -WindowStyle Maximized -NoExit -WorkingDirectory C:\
+}
+else if FileExist(pwsh)
+{
+    Run %pwsh% -NoLogo -WindowStyle Maximized -NoExit -WorkingDirectory C:\
+}
+else if WinExist("ahk_exe powershell.exe")
+{
+    WinActivate
+}
+else
+{    
+    Run %powershell% -NoLogo -WindowStyle Maximized -NoExit -Command Set-Location -Path C:\
+}
+Return
+
++^O:: ; *** CTRL+SHIFT+O for (old) PowerShell (PS5.1) ***
+powershell := "C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"
+SetTitleMatchMode RegEx
+if WinExist("ahk_exe powershell.exe")
+{
+    WinActivate
+}
+else
+{    
+    Run %powershell% -NoLogo -WindowStyle Maximized -NoExit -Command Set-Location -Path C:\
 }
 Return
 
