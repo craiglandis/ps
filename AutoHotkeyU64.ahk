@@ -1,19 +1,56 @@
 #SingleInstance force
 
-+^P:: ; *** CTRL+SHIFT+O for (old) PowerShell ***
++^P::
+windowsTerminalPreview := "C:\Users\" A_UserName "\AppData\Local\Microsoft\WindowsApps\Microsoft.WindowsTerminalPreview_8wekyb3d8bbwe\wt.exe"
+windowsTerminal := "C:\Users\" A_UserName "\AppData\Local\Microsoft\WindowsApps\wt.exe"
+pwshPreview := "C:\Program Files\PowerShell\7-preview\pwsh.exe"
+pwsh := "C:\Program Files\PowerShell\7\pwsh.exe"
+powershell := "C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"
 SetTitleMatchMode RegEx
-;IfWinExist i).*Administrator: Windows PowerShell$
+if WinExist("ahk_exe WindowsTerminal.exe")
+{
+    WinActivate
+}
+else if FileExist(windowsTerminalPreview)
+{
+    Run, %windowsTerminalPreview%, , max
+}
+else if FileExist(windowsTerminal)
+{
+    Run, %windowsTerminal%, , max
+}
+else if WinExist("ahk_exe pwsh.exe")
+{
+    WinActivate
+}
+else if FileExist(pwshPreview)
+{    
+    Run %pwshPreview% -NoLogo -WindowStyle Maximized -NoExit -WorkingDirectory C:\
+}
+else if FileExist(pwsh)
+{
+    Run %pwsh% -NoLogo -WindowStyle Maximized -NoExit -WorkingDirectory C:\
+}
+else if WinExist("ahk_exe powershell.exe")
+{
+    WinActivate
+}
+else
+{    
+    Run %powershell% -NoLogo -WindowStyle Maximized -NoExit -Command Set-Location -Path C:\
+}
+Return
+
++^O:: ; *** CTRL+SHIFT+O for (old) PowerShell (PS5.1) ***
+powershell := "C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"
+SetTitleMatchMode RegEx
 if WinExist("ahk_exe powershell.exe")
 {
     WinActivate
 }
-Else
-{
-  ;ClassNN:	Windows.UI.Composition.DesktopWindowContentBridge1
-  ;  Text:	DesktopWindowXamlSource
-  Run powershell -nologo -windowstyle maximized -noexit -command set-location c:\ | out-null
-  ;Run, wt new-tab "Windows PowerShell"
-  ;send CTRL+SHIFT+2 if "PS 5.1" window title not detected
+else
+{    
+    Run %powershell% -NoLogo -WindowStyle Maximized -NoExit -Command Set-Location -Path C:\
 }
 Return
 
