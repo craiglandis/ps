@@ -20,8 +20,7 @@
     "WingetName": "7zip.7zip",
     "Groups": [
       "PC",
-      "VM",
-      "VSAW"
+      "VM"
     ]
   },
   {
@@ -37,8 +36,7 @@
     "WingetName": "Lexikos.AutoHotkey",
     "Groups": [
       "PC",
-      "VM",
-      "VSAW"
+      "VM"
     ]
   },
   {
@@ -47,8 +45,7 @@
     "WingetName": "",
     "Groups": [
       "PC",
-      "VM",
-      "VSAW"
+      "VM"
     ]
   },
   {
@@ -57,8 +54,7 @@
     "WingetName": "Microsoft.AzureCLI",
     "Groups": [
       "PC",
-      "VM",
-      "VSAW"
+      "VM"
     ]
   },
   {
@@ -67,8 +63,7 @@
     "WingetName": "ScooterSoftware.BeyondCompare4",
     "Groups": [
       "PC",
-      "VM",
-      "VSAW"
+      "VM"
     ]
   },
   {
@@ -92,8 +87,7 @@
     "ChocolateyName": "cpu-z.portable",
     "WingetName": "CPUID.CPU-Z",
     "Groups": [
-	    "VM",
-      "VSAW"
+	    "VM"
     ],
 	"Notes": "Winget doesn't have a portable one, only CPUID.CPU-Z"
   },
@@ -102,8 +96,7 @@
     "ChocolateyName": "crystaldiskmark",
     "WingetName": "CrystalDewWorld.CrystalDiskMark",
     "Groups": [
-      "VM",
-      "VSAW"
+      "VM"
     ]
   },
   {
@@ -144,8 +137,7 @@
     "WingetName": "voidtools.Everything",
     "Groups": [
       "PC",
-      "VM",
-      "VSAW"
+      "VM"
     ]
   },
   {
@@ -153,7 +145,7 @@
     "ChocolateyName": "fiddler",
     "WingetName": "Telerik.Fiddler",
     "Groups": [
-      "OTHER"
+      "VM"
     ]
   },
   {
@@ -194,8 +186,7 @@
     "WingetName": "Git.Git",
     "Groups": [
       "PC",
-      "VM",
-      "VSAW"
+      "VM"
     ]
   },
   {
@@ -203,8 +194,6 @@
     "ChocolateyName": "googlechrome",
     "WingetName": "Google.Chrome",
     "Groups": [
-      "PC",
-      "VM"
     ]
   },
   {
@@ -212,9 +201,7 @@
     "ChocolateyName": "graphviz",
     "WingetName": "Graphviz.Graphviz",
     "Groups": [
-      "PC",
-      "VM",
-      "VSAW"
+      "PC"
     ]
   },
   {
@@ -223,8 +210,7 @@
     "WingetName": "Greenshot.Greenshot",
     "Groups": [
       "PC",
-      "VM",
-      "VSAW"
+      "VM"
     ]
   },
   {
@@ -232,8 +218,7 @@
     "ChocolateyName": "gpu-z",
     "WingetName": "TechPowerUp.GPU-Z",
     "Groups": [
-      "VM",
-      "VSAW"
+      "VM"
     ]
   },
   {
@@ -248,8 +233,7 @@
     "ChocolateyName": "iperf3",
     "WingetName": "",
     "Groups": [
-      "VM",
-      "VSAW"
+      "VM"
     ]
   },
   {
@@ -272,8 +256,7 @@
     "ChocolateyName": "lessmsi",
     "WingetName": "",
     "Groups": [
-      "VM",
-      "VSAW"
+      "VM"
     ]
   },
   {
@@ -290,9 +273,9 @@
     "ChocolateyName": "microsoft-edge",
     "WingetName": "Microsoft.Edge",
     "Groups": [
+      "VM"
     ],
-    "Notes": "Since Chrome installs on Win7+ but Edge does not, just install Chrome on all Windows versions"
-
+    "Notes": "Edge is still supported on Win7+ https://docs.microsoft.com/en-us/deployedge/microsoft-edge-supported-operating-systems"
   },
   {
     "Name": "Microsoft Teams",
@@ -307,8 +290,7 @@
     "ChocolateyName": "",
     "WingetName": "Insecure.Nmap",
     "Groups": [
-      "VM",
-      "VSAW"
+      "VM"
     ],
     "Notes": "Chocolatey nmap package waits for input as it run Npcap installer. Winget package is silent."
   },
@@ -336,8 +318,7 @@
     "WingetName": "Microsoft.PowerShell",
     "Groups": [
       "PC",
-      "VM",
-      "VSAW"
+      "VM"
     ]
   },
   {
@@ -355,8 +336,7 @@
     "WingetName": "Microsoft.PowerToys",
     "Groups": [
       "PC",
-      "VM",
-      "VSAW"
+      "VM"
     ],
     "Notes": "The chocolatey package - powertoys - waits for input even with --silent, winget package does not wait, though it does launch PowerToys"
   },
@@ -366,8 +346,7 @@
     "WingetName": "Python.Python.3",
     "Groups": [
       "PC",
-      "VM",
-      "VSAW"
+      "VM"
     ]
   },
   {
@@ -375,8 +354,7 @@
     "ChocolateyName": "rufus.portable",
     "WingetName": "",
     "Groups": [
-      "VM",
-      "VSAW"
+      "VM"
     ],
 	"Notes": "Winget doesn't have a portable one, only Rufus.Rufus and 9PC3H3V7Q9CH for msstore"
   },
@@ -385,8 +363,7 @@
     "ChocolateyName": "screentogif",
     "WingetName": "NickeManarin.ScreenToGif",
     "Groups": [
-      "VM",
-      "VSAW"
+      "VM"
     ],
     "Notes": "ScreenToGif requires .NET Desktop Runtime 6.0.1+ https://download.visualstudio.microsoft.com/download/pr/bf058765-6f71-4971-aee1-15229d8bfb3e/c3366e6b74bec066487cd643f915274d/windowsdesktop-runtime-6.0.1-win-x64.exe"
   },
@@ -404,8 +381,7 @@
     "WingetName": "Microsoft.AzureStorageExplorer",
     "Groups": [
       "PC",
-      "VM",
-      "VSAW"
+      "VM"
     ]
   },
   {
@@ -449,8 +425,7 @@
     "ChocolateyName": "windbg",
     "WingetName": "9PGJGD53TN86",
     "Groups": [
-      "VM",
-      "VSAW"
+      "VM"
     ]
   },
   {
@@ -459,8 +434,7 @@
     "WingetName": "Microsoft.WindowsAdminCenter",
     "Groups": [
       "PC",
-      "VM",
-      "VSAW"
+      "VM"
     ]
   },
   {
@@ -485,8 +459,7 @@
     "WingetName": "9N0DX20HK701",
     "Groups": [
       "PC",
-      "VM",
-      "VSAW"
+      "VM"
     ],
     "Notes": "Note supported on Windows Server SKUs, though may work on WS22 by install the msixbundle. Chocolatey package is microsoft-windows-terminal but leaving it blank so winget installs both terminal and terminal preview"
   },
@@ -504,8 +477,7 @@
     "ChocolateyName": "winscp",
     "WingetName": "WinSCP.WinSCP",
     "Groups": [
-      "VM",
-      "VSAW"
+      "VM"
     ]
   },
   {
@@ -513,8 +485,7 @@
     "ChocolateyName": "wireshark",
     "WingetName": "WiresharkFoundation.Wireshark",
     "Groups": [
-      "VM",
-      "VSAW"
+      "VM"
     ]
   },
   {
@@ -522,8 +493,7 @@
     "ChocolateyName": "wiztree",
     "WingetName": "AntibodySoftware.WizTree",
     "Groups": [
-      "VM",
-      "VSAW"
+      "VM"
     ]
   },
   {
