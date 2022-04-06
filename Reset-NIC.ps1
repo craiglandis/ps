@@ -7,11 +7,8 @@ Disable-NetAdapter -Name * -Confirm:$false
 #>
 
 param(
-    [string]$resourceGroupName = 'rg',
-    [string]$vmName = 'ws22eph',
-    [switch]$deallocate,
-    [switch]$static,
-    [switch]$dynamic
+    [string]$resourceGroupName,
+    [string]$vmName
 )
 
 function Write-Console
@@ -67,9 +64,9 @@ function Get-PrimaryNic
     $privateIpAddress = $primaryIpConfig.PrivateIpAddress
     $macAddress = $primaryNic.MacAddress
 
-    Write-Console "Current private IP allocation method: $privateIpAllocationMethod"
-    Write-Console "Current private IP address: $privateIpAddress"
-    Write-Console "Current MAC address: $macAddress"
+    Write-Console "Private IP allocation method: $privateIpAllocationMethod"
+    Write-Console "Private IP address: $privateIpAddress"
+    Write-Console "MAC address: $macAddress"
 
     $primaryNic = [PSCustomObject]@{
         Object                    = $primaryNic
@@ -147,6 +144,7 @@ $ProgressPreference = 'SilentlyContinue'
 $originalPrimaryNicSettings = Set-PrivateIpAllocationMethod -resourceGroupName $resourceGroupName -vmName $vmName
 if ($originalPrimaryNicSettings)
 {
+    Write-Console "Reverting VM to original private IP settings"
     if ($originalPrimaryNicSettings.PrivateIpAllocationMethod -eq 'Static')
     {
         $result = Set-PrivateIpAllocationMethod -resourceGroupName $resourceGroupName -vmName $vmName -privateIpAddress $originalPrimaryNicSettings.PrivateIpAddress
