@@ -4,6 +4,8 @@ param(
 
 if ($driveLetter)
 {
+    # Specifying drive letter as "E" or "E:" or "E:\" will all end up as "E:"
+    $driveLetter = "$($driveLetter.Chars(0)):"
     $packages = dism /format:table /image:$driveLetter /get-packages
 }
 else
@@ -18,6 +20,6 @@ $packages | Select-String -SimpleMatch 'install pending' | ForEach-Object {
     {
         $line = $line.ToString()
         $packageName = $line.Split(' ')[0]
-        dism /Image:e:\ /Remove-Package /PackageName:$packageName
+        dism /image:$driveLetter /Remove-Package /PackageName:$packageName
     }
 }
