@@ -2,6 +2,8 @@
 param (
     [string]$resourceGroupName,
     [string]$location,
+    [string]$userName,
+    [string]$password,
     [switch]$createNatGateway
 )
 
@@ -46,6 +48,15 @@ $scriptBaseName = $scriptName.Split('.')[0]
 $PSDefaultParameterValues['*:ErrorAction'] = 'Stop'
 $PSDefaultParameterValues['*:WarningAction'] = 'SilentlyContinue'
 $ProgressPreference = 'SilentlyContinue'
+
+if ($password)
+{
+    $passwordSecureString = $password | ConvertTo-SecureString -AsPlainText -Force
+}
+else
+{
+    [securestring]$passwordSecureString = Read-Host -AsSecureString -Prompt "Password to use for the VM"
+}
 
 Out-Log "Creating resource group"
 $resourceGroup = New-AzResourceGroup -Name $resourceGroupName -Location $location
