@@ -1,3 +1,7 @@
+# To use in cloud shell:
+# (New-Object Net.Webclient).DownloadFile('https://raw.githubusercontent.com/craiglandis/ps/master/New-AzILB.ps1', 'New-AzILB.ps1')
+# ./New-AzILB.ps1 -resourceGroupName lbtestrg11 -location westus2 -userName craig -password <password>
+# ./New-AzILB.ps1 -resourceGroupName lbtestrg12 -location westus2 -userName craig -password <password> -createNatGateway
 [CmdletBinding(SupportsShouldProcess = $true)]
 param (
     [string]$resourceGroupName,
