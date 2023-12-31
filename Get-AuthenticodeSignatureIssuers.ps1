@@ -19,6 +19,6 @@ foreach ($filePath in $moduleFilePaths)
 }
 $issuers = $issuers | Sort-Object -Unique
 $issuersCount = $issuers | Measure-Object | Select-Object -ExpandProperty Count
-Write-Output $issuers
 Write-Output "`nProcessName: $processName"
-Write-Output "Unique Module Signature Issuers: $issuersCount"
+Write-Output "Unique Module Signature Issuers count: $issuersCount`n"
+Write-Output $issuers
