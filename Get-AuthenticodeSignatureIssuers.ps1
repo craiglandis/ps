@@ -2,6 +2,8 @@ param(
     [string[]]$processName = '*' # waappagent,windowsazureguestagent
 )
 
+$processName = $processName -split ','
+
 $issuers = New-Object System.Collections.Generic.List[String]
 
 $modules = Get-Process -Name $processName | Select-Object -ExpandProperty Modules -ErrorAction SilentlyContinue
