@@ -1,5 +1,5 @@
 param(
-    [string]$processName = '*'
+    [string[]]$processName = '*' # waappagent,windowsazureguestagent
 )
 
 $issuers = New-Object System.Collections.Generic.List[String]
