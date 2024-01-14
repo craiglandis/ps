@@ -65,7 +65,9 @@ if ((Test-Path -Path $exePath -PathType Leaf) -eq $false)
     $uri = 'https://www.nirsoft.net/utils/regscanner-x64.zip'
     $zipPath = "$binPath\regscanner-x64.zip"
     Invoke-WebRequest -Uri $uri -OutFile $zipPath
-    Expand-Archive -Path $zipPath -DestinationPath $binPath
+    Add-Type -Assembly System.IO.Compression.Filesystem
+    [System.IO.Compression.ZipFile]::ExtractToDirectory($zipPath, $exePath)
+    # Expand-Archive -Path $zipPath -DestinationPath $binPath
 }
 $xmlPath = "$binPath\regscanner.xml"
 & $exePath /cfg $cfgPath /sxml $xmlPath
