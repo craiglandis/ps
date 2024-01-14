@@ -84,7 +84,11 @@ foreach ($object in $global:objects)
     $strings.Add($string)
 }
 $global:strings
-$global:objects | Out-GridView
 $txtPath = "$env:TEMP\regscanner.txt"
 $global:strings | Out-File -FilePath $txtPath
-Invoke-Item -Path $txtPath
+# ConsoleHost is a local session, ServerRemoteHost is a remote session
+if ($host.Name -eq 'ConsoleHost')
+{
+    $global:objects | Out-GridView
+    Invoke-Item -Path $txtPath
+}
