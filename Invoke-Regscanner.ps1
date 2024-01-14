@@ -49,10 +49,10 @@ MainFont=00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
 SubKeyDepth=-1
 '@
 $cfg = $cfg.Replace('Find=placeholder',"Find=$searchString")
-$cfgPath = "$env:TEMP\regscanner.cfg"
+$binPath = 'C:\BIN'
+$cfgPath = "$binPath\regscanner.cfg"
 $cfg | Out-File -FilePath $cfgPath -Force
 
-$binPath = 'C:\BIN'
 $exeName = 'regscanner.exe'
 $exePath = "$binPath\$exeName"
 if ((Test-Path -Path $exePath -PathType Leaf) -eq $false)
