@@ -75,7 +75,7 @@ invoke-expression "& $exePath /cfg $cfgPath /sxml $xmlPath"
 do {
     Start-Sleep -Milliseconds 100
 } until (Test-Path -Path $xmlPath -PathType Leaf)
-[xml]$result = get-content -path $xmlPath
+[xml]$result = get-content -path $xmlPath -raw
 $global:objects = $result.registry_report.item | Select-Object registry_key,name,type,data
 $global:strings = New-Object System.Collections.Generic.List[String]
 foreach ($object in $global:objects)
