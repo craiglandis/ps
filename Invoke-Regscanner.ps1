@@ -59,7 +59,7 @@ if ((Test-Path -Path $exePath -PathType Leaf) -eq $false)
 {
     if ((Test-Path -Path $binPath -PathType Leaf) -eq $false)
     {
-        New-Item -Path $binPath -ItemType Directory | Out-Null
+        New-Item -Path $binPath -ItemType Directory -ErrorAction SilentlyContinue | Out-Null
     }
     [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
     $uri = 'https://www.nirsoft.net/utils/regscanner-x64.zip'
