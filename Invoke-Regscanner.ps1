@@ -83,12 +83,20 @@ foreach ($object in $global:objects)
     $string = "$($object.registry_key)\$($object.name) $($object.type) $($object.data)"
     $strings.Add($string)
 }
-$global:strings
-$txtPath = "$env:TEMP\regscanner.txt"
-$global:strings | Out-File -FilePath $txtPath
 # ConsoleHost is a local session, ServerRemoteHost is a remote session
 if ($host.Name -eq 'ConsoleHost')
 {
+    $global:strings
+    $txtPath = "$env:TEMP\regscanner.txt"
+    $global:strings | Out-File -FilePath $txtPath
     $global:objects | Out-GridView
     Invoke-Item -Path $txtPath
+}
+else
+{
+    $result = [PSCustomObject]@{
+        strings = $global:strings
+        objects = $global:objects
+    }
+    return $result
 }
