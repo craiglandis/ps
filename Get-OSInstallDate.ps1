@@ -494,22 +494,88 @@ namespace Registry
 
 $cloneTag = Get-ItemProperty -Path HKLM:\SYSTEM\Setup | Select-Object -ExpandProperty CloneTag
 $cloneTag = [DateTime]::ParseExact($cloneTag, "ddd MMM dd HH:mm:ss yyyy", [System.Globalization.CultureInfo]::InvariantCulture)
-$cloneTag = "$(Get-Date $cloneTag -Format yyyy-MM-dd) $(Get-Age -Start $cloneTag) ago"
+#$cloneTag = "$(Get-Date $cloneTag -Format yyyy-MM-dd) $(Get-Age -Start $cloneTag) ago"
+$cloneTag = Get-Date $cloneTag -Format yyyy-MM-ddTHH:mm:ss #yyyy-MM-dd
+$cloneTagAgo = Get-Age -Start $cloneTag
 
 $w32TimeRegKeyLastWriteTime = Get-RegKeyInfo -Path 'HKLM:\SYSTEM\CurrentControlSet\Services\w32time' | Select-Object -ExpandProperty LastWriteTime
-$w32TimeRegKeyLastWriteTime = "$(Get-Date $w32TimeRegKeyLastWriteTime -Format yyyy-MM-dd) $(Get-Age -Start $w32TimeRegKeyLastWriteTime) ago"
+#$w32TimeRegKeyLastWriteTime = "$(Get-Date $w32TimeRegKeyLastWriteTime -Format yyyy-MM-dd) $(Get-Age -Start $w32TimeRegKeyLastWriteTime) ago"
+$w32TimeRegKeyLastWriteTime = Get-Date $w32TimeRegKeyLastWriteTime -Format yyyy-MM-ddTHH:mm:ss #yyyy-MM-dd
+$w32TimeRegKeyLastWriteTimeAgo = Get-Age -Start $w32TimeRegKeyLastWriteTime
 
 $profileCreationTime = Get-Item -Path $env:USERPROFILE -Force | Select-Object -ExpandProperty CreationTime
-$profileCreationTime = "$(Get-Date $profileCreationTime -Format yyyy-MM-dd) $(Get-Age -Start $profileCreationTime) ago"
+# $profileCreationTime = "$(Get-Date $profileCreationTime -Format yyyy-MM-dd) $(Get-Age -Start $profileCreationTime) ago"
+$profileCreationTime = Get-Date $profileCreationTime -Format yyyy-MM-ddTHH:mm:ss #yyyy-MM-dd
+$profileCreationTimeAgo = Get-Age -Start $profileCreationTime
 
 $osInstallDateFromRegistry = Get-ItemPropertyValue -Path "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion" -Name InstallDate
 $osInstallDateFromRegistry = ([datetime]'1/1/1970').AddSeconds($osInstallDateFromRegistry)
-$osInstallDateFromRegistry = "$(Get-Date $osInstallDateFromRegistry -Format yyyy-MM-dd) $(Get-Age -Start $osInstallDateFromRegistry) ago"
+#$osInstallDateFromRegistry = "$(Get-Date $osInstallDateFromRegistry -Format yyyy-MM-dd) $(Get-Age -Start $osInstallDateFromRegistry) ago"
+$osInstallDateFromRegistry = Get-Date $osInstallDateFromRegistry -Format yyyy-MM-ddTHH:mm:ss #yyyy-MM-dd
+$osInstallDateFromRegistryAgo = Get-Age -Start $osInstallDateFromRegistry
 
 $win32_OperatingSystem = Get-CimInstance -Query 'SELECT InstallDate FROM Win32_OperatingSystem'
 $osInstallDateFromWMI = $win32_OperatingSystem.InstallDate
-$osInstallDateFromWMI = "$(Get-Date $osInstallDateFromWMI -Format yyyy-MM-dd) $(Get-Age -Start $osInstallDateFromWMI) ago"
+#$osInstallDateFromWMI = "$(Get-Date $osInstallDateFromWMI -Format yyyy-MM-dd) $(Get-Age -Start $osInstallDateFromWMI) ago"
+$osInstallDateFromWMI = Get-Date (Get-Date $osInstallDateFromWMI).ToUniversalTime() -Format yyyy-MM-ddTHH:mm:ss # Get-Date $osInstallDateFromWMI -Format yyyy-MM-ddTHH:mm:ss #yyyy-MM-dd
+$osInstallDateFromWMIAgo = Get-Age -Start $osInstallDateFromWMI
 
+$lastCumulativeUpdate = Get-WinEvent -FilterHashtable @{ProviderName = 'Microsoft-Windows-WindowsUpdateClient'; Id = 19} -ErrorAction SilentlyContinue | Where-Object {$_.KeywordsDisplayNames.Contains('Success')} | Where-Object {$_.Message.Contains('Cumulative Update for Windows')} | Sort-Object TimeCreated -Descending | Select-Object -First 1
+if ($lastCumulativeUpdate)
+{
+    $lastCumulativeUpdateTime = Get-Date $lastCumulativeUpdate.TimeCreated -Format yyyy-MM-ddTHH:mm:ss
+    $lastCumulativeUpdateTimeAgo = Get-Age $lastCumulativeUpdateTime
+    #$lastCumulativeUpdateMessage = $lastCumulativeUpdate.Message
+    #$lastCumulativeUpdateMessage = $lastCumulativeUpdateMessage.Replace('Installation Successful: Windows successfully installed the following update:', '').Trim()
+    #$lastCumulativeUpdateString = "$(Get-Age $lastCumulativeUpdateTime) ago $(Get-Date $lastCumulativeUpdateTime -Format yyyy-MM-ddTHH:mm:ss) $lastCumulativeUpdateMessage"
+}
+
+$dates = New-Object System.Collections.Generic.List[Object]
+$date = [PSCustomObject]@{
+    Name = 'CloneTag'
+    Date = $cloneTag
+    Ago = $cloneTagAgo
+}
+$dates.Add($date)
+
+$date = [PSCustomObject]@{
+    Name = 'W32TimeRegKeyLastWriteTime'
+    Date = $w32TimeRegKeyLastWriteTime
+    Ago = $w32TimeRegKeyLastWriteTimeAgo
+}
+$dates.Add($date)
+
+$date = [PSCustomObject]@{
+    Name = 'OsInstallDateFromRegistry'
+    Date = $osInstallDateFromRegistry
+    Ago = $osInstallDateFromRegistryAgo
+}
+$dates.Add($date)
+
+$date = [PSCustomObject]@{
+    Name = 'OsInstallDateFromWMI'
+    Date = $osInstallDateFromWMI
+    Ago = $osInstallDateFromWMIAgo
+}
+$dates.Add($date)
+
+$date = [PSCustomObject]@{
+    Name = 'ProfileCreationTime'
+    Date = $profileCreationTime
+    Ago = $profileCreationTimeAgo
+}
+$dates.Add($date)
+
+$date = [PSCustomObject]@{
+    Name = 'LastCumulativeUpdateTime'
+    Date = $lastCumulativeUpdateTime
+    Ago = $lastCumulativeUpdateTimeAgo
+}
+$dates.Add($date)
+
+$dates | Sort-Object Date,Name
+
+<#
 $dates = [PSCustomObject]@{
     CloneTag = $cloneTag
     OsInstallDateFromRegistry = $osInstallDateFromRegistry
@@ -517,5 +583,4 @@ $dates = [PSCustomObject]@{
     ProfileCreationTime = $profileCreationTime
     W32TimeRegKeyLastWriteTime = $w32TimeRegKeyLastWriteTime
 }
-
-$dates | sort-object
+#>
