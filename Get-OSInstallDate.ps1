@@ -573,7 +573,7 @@ $date = [PSCustomObject]@{
 }
 $dates.Add($date)
 
-$dates | Sort-Object Date,Name
+$dates | Sort-Object Date,Name | Format-Table Name,Date,Ago -AutoSize
 
 <#
 $dates = [PSCustomObject]@{
