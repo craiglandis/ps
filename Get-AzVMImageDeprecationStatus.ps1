@@ -4,13 +4,14 @@ $vms = Get-AzVM
 
 foreach ($vm in $vms)
 {
+    $location = $vm.Location
     $publisher = $vm.StorageProfile.ImageReference.Publisher
     $offer = $vm.StorageProfile.ImageReference.Offer
     $sku = $vm.StorageProfile.ImageReference.Sku
     $exactVersion = $vm.StorageProfile.ImageReference.ExactVersion
     $urn = "$($publisher):$($offer):$($sku):$($exactVersion)"
 
-    $image = Get-AzVMImage -Location $vm.location -PublisherName $vm.StorageProfile.ImageReference.Publisher -Offer $vm.StorageProfile.ImageReference.Offer -Skus $vm.StorageProfile.ImageReference.Sku -Version $vm.StorageProfile.ImageReference.ExactVersion
+    $image = Get-AzVMImage -Location $location -PublisherName $publisher -Offer $offer -Skus $sku -Version $exactVersion
 
     $imageDeprecationStatus = $image.ImageDeprecationStatus
 
