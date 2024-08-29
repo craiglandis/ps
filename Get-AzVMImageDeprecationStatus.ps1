@@ -20,7 +20,6 @@ foreach ($vm in $vms)
     $vm.StorageProfile.ImageReference | Add-Member -MemberType NoteProperty -Name ImageUrn -Value $urn -Force
 }
 
-
 $vmName = @{Name = 'VM'; Expression = {$_.Name}}
 $rgName = @{Name = 'RG'; Expression = {$_.ResourceGroupName}}
 $imageState = @{Name = 'ImageState'; Expression = {$_.StorageProfile.ImageReference.ImageState}}
