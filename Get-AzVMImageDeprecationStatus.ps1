@@ -1,3 +1,5 @@
+# https://aka.ms/DeprecatedImagesFAQ
+
 $vms = Get-AzVM
 
 foreach ($vm in $vms)
