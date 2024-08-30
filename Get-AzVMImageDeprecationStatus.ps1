@@ -42,7 +42,6 @@ else
     $imageUrn = @{Name = 'ImageUrn'; Expression = {$_.StorageProfile.ImageReference.ImageUrn}}
 
     $vms = $vms | Select-Object $vmName, $rgName, $imageState, $scheduledDeprecationTime, $alternativeOption, $imageUrn
-    $global:dbgVms = $vms
 
     $totalVMCount = $vms | Measure-Object | Select-Object -ExpandProperty Count
     $vmsFromImagesScheduledForDeprecation = $vms | Where-Object ImageState -EQ 'ScheduledForDeprecation'
