@@ -69,9 +69,6 @@ else
     }
     $table = "`n$($table.Trim())`n"
     Write-Output $table
-    #$global:dbgvms = $vmsFromImagesScheduledForDeprecation
-
-    #exit
 
     if ($vmsFromImagesScheduledForDeprecationCount -ge 1 -or ($all -and [string]::IsNullOrEmpty($vms) -eq $false))
     {
@@ -92,9 +89,18 @@ else
             $fileName = [System.String]::Concat($fileName, "-$($PSBoundParameters['name'])")
         }
 
-        $csvPath = "$PWD\$fileName.csv"
-        $jsonPath = "$PWD\$fileName.json"
-        $txtPath = "$PWD\$fileName.txt"
+        if (Test-Path -Path $env:HOME -ErrorAction SilentlyContinue)
+        {
+            $path = $env:HOME
+        }
+        else
+        {
+            $path = $PWD
+        }
+
+        $csvPath = "$path\$fileName.csv"
+        $jsonPath = "$path\$fileName.json"
+        $txtPath = "$path\$fileName.txt"
 
         if ($all)
         {
@@ -108,7 +114,7 @@ else
         }
         $table | Out-File -FilePath $txtPath
 
-        Write-Output "Writing output files to current directory $PWD`n"
+        Write-Output "Writing output to $path`n"
 
         if (Test-Path -Path $csvPath -PathType Leaf)
         {
