@@ -7,6 +7,12 @@ param(
     [switch]$show
 )
 
+$scriptStartTime = Get-Date
+$scriptFullName = $MyInvocation.MyCommand.Path
+$scriptPath = Split-Path -Path $scriptFullName
+$scriptName = Split-Path -Path $scriptFullName -Leaf
+$scriptBaseName = $scriptName.Split('.')[0]
+
 $vms = Get-AzVM -ResourceGroupName $resourceGroupName -Name $name -ErrorAction Stop
 
 if ([string]::IsNullOrEmpty($vms))
@@ -27,10 +33,14 @@ else
         $image = Get-AzVMImage -Location $location -PublisherName $publisher -Offer $offer -Skus $sku -Version $exactVersion -ErrorAction SilentlyContinue
 
         $image | ForEach-Object {
-            $vm.StorageProfile.ImageReference | Add-Member -MemberType NoteProperty -Name ImageState -Value $image.ImageDeprecationStatus.ImageState -Force
-            $vm.StorageProfile.ImageReference | Add-Member -MemberType NoteProperty -Name ScheduledDeprecationTime -Value $image.ImageDeprecationStatus.ScheduledDeprecationTime -Force
             $vm.StorageProfile.ImageReference | Add-Member -MemberType NoteProperty -Name AlternativeOption -Value $image.ImageDeprecationStatus.AlternativeOption -Force
+            $vm.StorageProfile.ImageReference | Add-Member -MemberType NoteProperty -Name ImageState -Value $image.ImageDeprecationStatus.ImageState -Force
             $vm.StorageProfile.ImageReference | Add-Member -MemberType NoteProperty -Name ImageUrn -Value $urn -Force
+            if ($image.ImageDeprecationStatus.ScheduledDeprecationTime)
+            {
+                $scheduledDeprecationTime = Get-Date $image.ImageDeprecationStatus.ScheduledDeprecationTime -Format 'yyyy-MM-ddTHH:mm:ssZ'
+            }
+            $vm.StorageProfile.ImageReference | Add-Member -MemberType NoteProperty -Name ScheduledDeprecationTime -Value $scheduledDeprecationTime -Force
         }
     }
 
@@ -41,7 +51,7 @@ else
     $alternativeOption = @{Name = 'AlternativeOption'; Expression = {$_.StorageProfile.ImageReference.AlternativeOption}}
     $imageUrn = @{Name = 'ImageUrn'; Expression = {$_.StorageProfile.ImageReference.ImageUrn}}
 
-    $vms = $vms | Select-Object $vmName, $rgName, $imageState, $scheduledDeprecationTime, $alternativeOption, $imageUrn
+    $vms = $vms | Select-Object $vmName, $rgName, $imageState, $scheduledDeprecationTime, $imageUrn, $alternativeOption | Sort-Object ScheduledDeprecationTime
 
     $totalVMCount = $vms | Measure-Object | Select-Object -ExpandProperty Count
     $vmsFromImagesScheduledForDeprecation = $vms | Where-Object ImageState -EQ 'ScheduledForDeprecation'
@@ -54,24 +64,67 @@ else
     }
     else
     {
-        Write-Output "`nShowing VMs from images scheduled for deprecation (use -all to show all VMs):`n"
+        Write-Output "`nShowing VMs from images scheduled for deprecation (use -all to show all VMs):"
         $table = $vmsFromImagesScheduledForDeprecation | Format-Table -AutoSize | Out-String -Width 4096
     }
     $table = "`n$($table.Trim())`n"
     Write-Output $table
+    #$global:dbgvms = $vmsFromImagesScheduledForDeprecation
 
-    if ($txt)
+    #exit
+
+    if ($vmsFromImagesScheduledForDeprecationCount -ge 1 -or ($all -and [string]::IsNullOrEmpty($vms) -eq $false))
     {
-        $filePath = "Get-AzVMImageDeprecationStatus_$(Get-Date -Format yyyyMMddHHmmss).txt"
-        $table | Out-File -FilePath $filePath
-        if (Test-Path -Path $filePath -PathType Leaf)
+        $context = Get-AzContext
+        $subscriptionId = $context.Subscription.Id
+
+        $fileName = $scriptBaseName
+        if ([string]::IsNullOrEmpty($subscriptionId) -eq $false)
         {
-            Write-Output "Created output file: $filePath"
-            if ($show)
-            {
-                Write-Output "Opening output file: $filePath"
-                Invoke-Item -Path $filePath
-            }
+            $fileName = [System.String]::Concat($fileName, "-$subscriptionId")
+        }
+        if ([string]::IsNullOrEmpty($PSBoundParameters['resourceGroupName']) -eq $false)
+        {
+            $fileName = [System.String]::Concat($fileName, "-$($PSBoundParameters['resourceGroupName'])")
+        }
+        if ([string]::IsNullOrEmpty($PSBoundParameters['name']) -eq $false)
+        {
+            $fileName = [System.String]::Concat($fileName, "-$($PSBoundParameters['name'])")
+        }
+
+        $csvPath = "$PWD\$fileName.csv"
+        $jsonPath = "$PWD\$fileName.json"
+        $txtPath = "$PWD\$fileName.txt"
+
+        if ($all)
+        {
+            $vms | Export-Csv -Path $csvPath
+            $vms | ConvertTo-Json | Out-File -FilePath $jsonPath
+        }
+        else
+        {
+            $vmsFromImagesScheduledForDeprecation | Export-Csv -Path $csvPath
+            $vmsFromImagesScheduledForDeprecation | ConvertTo-Json | Out-File -FilePath $jsonPath
+        }
+        $table | Out-File -FilePath $txtPath
+
+        Write-Output "Writing output files to current directory $PWD`n"
+
+        if (Test-Path -Path $csvPath -PathType Leaf)
+        {
+            Write-Output " CSV: $csvPath"
+        }
+        if (Test-Path -Path $jsonPath -PathType Leaf)
+        {
+            Write-Output "JSON: $jsonPath"
+        }
+        if (Test-Path -Path $csvPath -PathType Leaf)
+        {
+            Write-Output " TXT: $txtPath"
         }
     }
 }
+
+$scriptTimespan = New-TimeSpan -Start $scriptStartTime -End (Get-Date)
+$scriptSeconds = [Math]::Round($scriptTimespan.TotalSeconds, 1)
+Write-Output "`n$($scriptSeconds)s"
