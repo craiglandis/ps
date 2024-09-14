@@ -56,7 +56,7 @@ else
     $totalVMCount = $vms | Measure-Object | Select-Object -ExpandProperty Count
     $vmsFromImagesScheduledForDeprecation = $vms | Where-Object ImageState -EQ 'ScheduledForDeprecation'
     $vmsFromImagesScheduledForDeprecationCount = $vmsFromImagesScheduledForDeprecation | Measure-Object | Select-Object -ExpandProperty Count
-    Write-Output "`n$vmsFromImagesScheduledForDeprecationCount of $totalVMCount VMs are from images scheduled for deprecation"
+    Write-Output "`n$vmsFromImagesScheduledForDeprecationCount of $totalVMCount VMs were created from images scheduled for deprecation"
     if ($all)
     {
         Write-Output "`nShowing all VMs:"
@@ -101,6 +101,7 @@ else
         $csvPath = "$path\$fileName.csv"
         $jsonPath = "$path\$fileName.json"
         $txtPath = "$path\$fileName.txt"
+        $zipPath = "$path\imagestate.zip"
 
         if ($all)
         {
@@ -119,14 +120,21 @@ else
         if (Test-Path -Path $csvPath -PathType Leaf)
         {
             Write-Output " CSV: $csvPath"
+            Get-ChildItem -Path $csvPath | Compress-Archive -DestinationPath $zipPath -Update
         }
         if (Test-Path -Path $jsonPath -PathType Leaf)
         {
             Write-Output "JSON: $jsonPath"
+            Get-ChildItem -Path $jsonPath | Compress-Archive -DestinationPath $zipPath -Update
         }
         if (Test-Path -Path $csvPath -PathType Leaf)
         {
             Write-Output " TXT: $txtPath"
+            Get-ChildItem -Path $txtPath | Compress-Archive -DestinationPath $zipPath -Update
+        }
+        if (Test-Path -Path $zipPath -PathType Leaf)
+        {
+            Write-Output "`n ZIP: $zipPath"
         }
     }
 }
