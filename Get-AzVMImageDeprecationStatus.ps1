@@ -137,7 +137,7 @@ else
             Write-Output "`n ZIP: $zipPath"
             if ($env:AZD_IN_CLOUDSHELL)
             {
-                Write-Output "To download $zipPath from cloud shell, select 'Manage Files', 'Download', then enter $zipPath in the required field, then click 'Download'"
+                Write-Output "`nTo download $zipPath from cloud shell, select 'Manage Files', 'Download', then enter $zipPath in the required field, then click 'Download'"
             }
         }
     }
