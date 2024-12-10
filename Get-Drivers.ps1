@@ -1,7 +1,8 @@
 param(
     [Alias('3rdparty')]
     [switch]$thirdparty,
-    [string]$xlsxFolderPath = $env:TEMP
+    [string]$xlsxFolderPath = $env:TEMP,
+    [switch]$show
 )
 
 $microsoftIssuers = @'
@@ -95,11 +96,14 @@ $global:dbgMicrosoftRunningSystemDrivers = $microsoftRunningSystemDrivers
 $global:dbgThirdPartySystemDrivers = $thirdPartySystemDrivers
 $global:dbgThirdPartyRunningSystemDrivers = $thirdPartyRunningSystemDrivers
 
-$timestamp = Get-Date -Format yyyyMMddHHmmss
-$xlsxFilePath = "$xlsxFolderPath\Drivers_$($env:COMPUTERNAME)_$($timestamp).xlsx"
-$systemDrivers | Export-Excel -Path $xlsxFilePath -WorksheetName Win32_SystemDriver -TableStyle Medium12 -FreezeTopRow -AutoSize -MaxAutoSizeRows 3 -AutoFilter -NoNumberConversion * -ErrorAction Stop
-$drivers | Export-Excel -Path $xlsxFilePath -WorksheetName Driverquery -TableStyle Medium11 -FreezeTopRow -AutoSize -MaxAutoSizeRows 3 -AutoFilter -NoNumberConversion * -ErrorAction Stop
-Invoke-Item -Path $xlsxFilePath
+if ($show)
+{
+    $timestamp = Get-Date -Format yyyyMMddHHmmss
+    $xlsxFilePath = "$xlsxFolderPath\Drivers_$($env:COMPUTERNAME)_$($timestamp).xlsx"
+    $systemDrivers | Export-Excel -Path $xlsxFilePath -WorksheetName Win32_SystemDriver -TableStyle Medium12 -FreezeTopRow -AutoSize -MaxAutoSizeRows 3 -AutoFilter -NoNumberConversion * -ErrorAction Stop
+    $drivers | Export-Excel -Path $xlsxFilePath -WorksheetName Driverquery -TableStyle Medium11 -FreezeTopRow -AutoSize -MaxAutoSizeRows 3 -AutoFilter -NoNumberConversion * -ErrorAction Stop
+    Invoke-Item -Path $xlsxFilePath
+}
 
 #$runningDrivers | ft Name,FileVersionRaw,CompanyName,LegalCopyright,Issuer
 # $runningDrivers | ft Name,Subject
