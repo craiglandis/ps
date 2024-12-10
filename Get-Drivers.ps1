@@ -276,11 +276,11 @@ $driverCountFromDriverquery = $drivers | Measure-Object | Select-Object -ExpandP
 
 $issuers = $systemDrivers.Issuer | Sort-Object -Unique
 
-Write-Output "$driverCountFromWMI drivers returned by Get-CimInstance -Query 'SELECT * FROM Win32_SystemDriver'"
-Write-Output "$driverCountFromDriverquery drivers returned by driverquery.exe /v /fo csv | ConvertFrom-Csv"
-Write-Output "$($wmiQuerySeconds)s to run Get-CimInstance -Query 'SELECT * FROM Win32_SystemDriver'"
-Write-Output "$($driverQuerySeconds)s seconds to run driverquery.exe /v /fo csv | ConvertFrom-Csv"
-$issuers
+Out-Log "$driverCountFromWMI drivers returned by Get-CimInstance -Query 'SELECT * FROM Win32_SystemDriver'" -verboseOnly
+Out-Log "$driverCountFromDriverquery drivers returned by driverquery.exe /v /fo csv | ConvertFrom-Csv" -verboseOnly
+Out-Log "$($wmiQuerySeconds)s to run Get-CimInstance -Query 'SELECT * FROM Win32_SystemDriver'" -verboseOnly
+Out-Log "$($driverQuerySeconds)s seconds to run driverquery.exe /v /fo csv | ConvertFrom-Csv" -verboseOnly
+Out-Log "$($issuers | Out-String)"
 
 $global:dbgSystemDrivers = $systemDrivers
 
@@ -310,11 +310,13 @@ if ($show)
 # $runningDrivers | ft Name,Subject
 if ($thirdparty)
 {
-    $thirdPartyRunningDrivers | Format-Table Name, DisplayName, CompanyName, Issuer, Path
+    $thirdPartyRunningDriversString = $thirdPartyRunningDrivers | Format-Table Name, DisplayName, CompanyName, Issuer, Path | Out-String -width 4096
+    Out-Log $thirdPartyRunningDriversString -verboseOnly
 }
 else
 {
-    $runningDrivers | Format-Table Name, DisplayName, CompanyName, Issuer, Path
+    $runningDriversString | Format-Table Name, DisplayName, CompanyName, Issuer, Path | Out-String -width 4096
+    Out-Log $runningDriversString -verboseOnly
 }
 
 $signedDrivers = $drivers | Where-Object {$_.IsSigned}
@@ -336,21 +338,6 @@ if ($unsigned)
 
 }
 
-if ($verbose)
-{
-    $systemDrivers = Invoke-ExpressionWithLogging "$env:SystemRoot\System32\driverquery.exe /v /fo csv | ConvertFrom-Csv"
-}
-else
-{
-    $systemDrivers = Invoke-ExpressionWithLogging "$env:SystemRoot\System32\driverquery.exe /si /fo csv | ConvertFrom-Csv"
-}
-elseif ($3rdparty)
-{
-    $systemDrivers = driverquery /si /fo csv | ConvertFrom-Csv
-}
-else
-{
-    $systemDrivers = driverquery /si /fo csv | ConvertFrom-Csv
-}
+$systemDrivers = Invoke-ExpressionWithLogging "$env:SystemRoot\System32\driverquery.exe /v /fo csv | ConvertFrom-Csv" -verboseOnly
 
-$systemDrivers
+return $systemDrivers
