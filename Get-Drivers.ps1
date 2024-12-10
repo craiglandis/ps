@@ -327,17 +327,38 @@ if ($3rdparty)
 {
     $systemDrivers = $systemDrivers | Where-Object {$_.IsSigned -and $_.Manufacturer -ne 'Microsoft' -and !($_.Manufacturer.StartsWith('(Standard')) -and !($_.Manufacturer.StartsWith('Standard')) -and !($_.Manufacturer.StartsWith('(Generic')) -and !($_.Manufacturer.StartsWith('Generic'))}
 }
-
-if ($signed)
+elseif ($signed)
 {
     $systemDrivers = $systemDrivers | Where-Object {$_.IsSigned -and $_.Manufacturer -ne 'Microsoft' -and !($_.Manufacturer.StartsWith('(Standard')) -and !($_.Manufacturer.StartsWith('Standard')) -and !($_.Manufacturer.StartsWith('(Generic')) -and !($_.Manufacturer.StartsWith('Generic'))}
 }
-
-if ($unsigned)
+elseif ($unsigned)
 {
 
 }
+else
+{
+    $systemDrivers = Invoke-ExpressionWithLogging "$env:SystemRoot\System32\driverquery.exe /v /fo csv | ConvertFrom-Csv" -verboseOnly
+}
 
-$systemDrivers = Invoke-ExpressionWithLogging "$env:SystemRoot\System32\driverquery.exe /v /fo csv | ConvertFrom-Csv" -verboseOnly
+$systemDriversCount = $systemDrivers | Measure-Object | Select-Object -ExpandProperty Count
 
-return $systemDrivers
+if ($systemDriversCount -ge 1)
+{
+    $name = @{Name = 'Name'; Expression={$_.'Module Name'}}
+    $displayName = @{Name = 'DisplayName'; Expression={$_.'Display Name'}} 
+    $type = @{Name = 'Type'; Expression={$_.'Driver Type'}}
+    $startMode = @{Name = 'StartMode'; Expression={$_.'Start Mode'}}
+    $acceptStop = @{Name = 'AcceptStop'; Expression={$_.'Accept Stop'}}
+    $acceptPause = @{Name = 'AcceptPause'; Expression={$_.'Accept Pause'}}
+    $pagedPool = @{Name = 'PagedPool'; Expression={$_.'Paged Pool'}} 
+    $code = @{Name = 'Code'; Expression={$_.'Code(bytes)'}} 
+    $bss = @{Name = 'BSS'; Expression={$_.'BSS(bytes)'}}
+    $init = @{Name = 'Init'; Expression={$_.'Init(bytes)'}}
+    $linkDate = @{Name = 'LinkDate'; Expression={$_.'Link Date'}}
+    
+    $systemDrivers = $systemDrivers | select-object $name,$displayName,Description,$type,$startMode,State,Status,Path,$acceptStop,$acceptPause,$pagedPool,$code,$bss,$init,$linkDate
+    $global:dbgSystemDrivers = $systemDrivers
+    $global:dbgSystemDrivers = $systemDrivers    
+    $runningDrivers = $systemDrivers | Where-Object {$_.State -eq 'Running'} | Sort-Object Name
+    $runningDrivers | Format-Table Name,DisplayName,State,Status,StartMode,Path -AutoSize
+}
