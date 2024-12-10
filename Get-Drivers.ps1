@@ -81,7 +81,6 @@ Write-Output "$($driverQuerySeconds)s seconds to run driverquery.exe /v /fo csv 
 $issuers
 
 $global:dbgSystemDrivers = $systemDrivers
-exit
 
 $runningSystemDrivers = $systemDrivers | Where-Object {$_.State -eq 'Running'}
 $microsoftSystemDrivers = $systemDrivers | Where-Object {$_.Issuer -in $microsoftIssuers}
@@ -96,16 +95,11 @@ $global:dbgMicrosoftRunningSystemDrivers = $microsoftRunningSystemDrivers
 $global:dbgThirdPartySystemDrivers = $thirdPartySystemDrivers
 $global:dbgThirdPartyRunningSystemDrivers = $thirdPartyRunningSystemDrivers
 
-
-
-
-
 $timestamp = Get-Date -Format yyyyMMddHHmmss
 $xlsxFilePath = "$xlsxFolderPath\Drivers_$($env:COMPUTERNAME)_$($timestamp).xlsx"
 $systemDrivers | Export-Excel -Path $xlsxFilePath -WorksheetName Win32_SystemDriver -TableStyle Medium12 -FreezeTopRow -AutoSize -MaxAutoSizeRows 3 -AutoFilter -NoNumberConversion * -ErrorAction Stop
 $drivers | Export-Excel -Path $xlsxFilePath -WorksheetName Driverquery -TableStyle Medium11 -FreezeTopRow -AutoSize -MaxAutoSizeRows 3 -AutoFilter -NoNumberConversion * -ErrorAction Stop
 Invoke-Item -Path $xlsxFilePath
-exit
 
 #$runningDrivers | ft Name,FileVersionRaw,CompanyName,LegalCopyright,Issuer
 # $runningDrivers | ft Name,Subject
@@ -117,7 +111,6 @@ else
 {
     $runningDrivers | Format-Table Name, DisplayName, CompanyName, Issuer, Path
 }
-
 
 $signedDrivers = $drivers | Where-Object {$_.IsSigned}
 $signedDrivers = $drivers | Where-Object {$_.IsSigned}
@@ -138,8 +131,6 @@ if ($unsigned)
 
 }
 
-
-
 if ($verbose)
 {
     $systemDrivers = Invoke-ExpressionWithLogging "$env:SystemRoot\System32\driverquery.exe /v /fo csv | ConvertFrom-Csv"
@@ -151,7 +142,6 @@ else
 elseif ($3rdparty)
 {
     $systemDrivers = driverquery /si /fo csv | ConvertFrom-Csv
-
 }
 else
 {
